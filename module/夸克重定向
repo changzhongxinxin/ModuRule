@@ -1,0 +1,17 @@
+#!name = 夸克网盘重定向
+#!desc = 夸克王牌重定向
+#!openUrl = 
+#!author = 
+#!tag = 功能增强
+#!system = 
+#!system_version = 
+#!loon_version = 3.2.6(821)
+#!homepage = 
+#!icon = https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/Quark.png
+#!date = 2025-02-04 17:00
+
+[Rewrite]
+(.+) 307 qklink://www.uc.cn?action=open_url&url=$2
+
+[MitM]
+hostname = pan.quark

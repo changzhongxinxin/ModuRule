@@ -1,0 +1,12 @@
+#!name=Emby上报拦截
+#!desc=拦截部分Emby进度上报
+#!icon=https://raw.githubusercontent.com/ginibond/ginibond/main/Icons/Forward/Nsfw_emby_qiumingshanjuezhan1.png
+
+[Rule]
+# URL-REGEX,"^(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)?",REJECT-DROP
+
+URL-REGEX,"/Sessions/Playing",REJECT-DROP
+
+
+[MITM]
+hostname = *.entertang.work, *.uhdnow.com
