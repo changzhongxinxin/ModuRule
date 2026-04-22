@@ -6,8 +6,10 @@
 [Rule]
 # URL-REGEX,"^(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)?",REJECT-DROP
 
-AND,((OR,((URL-REGEX,/Sessions/Playing$), (URL-REGEX,/Sessions/Playing/Progress), (URL-REGEX,/Sessions/Playing/Stopped))), (OR,((DOMAIN-KEYWORD,uhd), (DOMAIN-KEYWORD,entertang)))),REJECT-DROP
+#AND,((DOMAIN-KEYWORD,/sessions/playing),(OR,((DOMAIN-KEYWORD,uhd),(DOMAIN-KEYWORD,entertang)))),REJECT-DROP
 
+[Rewrite]
+*(?=.*(uhd|entertang)).*/Sessions/Playing.* reject-200
 
 [MITM]
 hostname = *.entertang.work, *.uhdnow.com
