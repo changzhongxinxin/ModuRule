@@ -10,6 +10,7 @@
 
 [Rewrite]
 *(?=.*(uhd|entertang)).*/Sessions/Playing.* reject-200
+(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)? reject-200
 
 [MITM]
 hostname = *.entertang.work, *.uhdnow.com
