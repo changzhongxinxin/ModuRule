@@ -6,7 +6,7 @@
 [Rule]
 # URL-REGEX,"^(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)?",REJECT-DROP
 
-URL-REGEX,"/Sessions/Playing",REJECT-DROP
+AND,((OR,((URL-REGEX,/Sessions/Playing$), (URL-REGEX,/Sessions/Playing/Progress), (URL-REGEX,/Sessions/Playing/Stopped))), (OR,((DOMAIN-KEYWORD,uhd), (DOMAIN-KEYWORD,entertang)))),REJECT-DROP
 
 
 [MITM]
