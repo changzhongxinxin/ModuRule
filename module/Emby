@@ -4,7 +4,7 @@
 #!icon=https://raw.githubusercontent.com/ginibond/ginibond/main/Icons/Forward/Nsfw_emby_qiumingshanjuezhan1.png
 
 [Rule]
-URL-REGEX,"^(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)?",REJECT-DROP
+URL-REGEX,"^(?=.*(?:uhd|entertang|shrekmedia)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)?",REJECT-DROP
 
 #AND,((DOMAIN-KEYWORD,/sessions/playing),(OR,((DOMAIN-KEYWORD,uhd),(DOMAIN-KEYWORD,entertang)))),REJECT-DROP
 
@@ -12,4 +12,4 @@ URL-REGEX,"^(?=.*(?:uhd|entertang)).*\/Sessions\/Playing(?:\/Progress|\/Stopped)
 #^.*(?=.*(uhd|entertang)).*/Sessions/Playing reject-200
 
 [MITM]
-hostname = *.entertang.work, *.uhdnow.com
+hostname = *.entertang.work, *.uhdnow.com,public.shrekmedia.org
