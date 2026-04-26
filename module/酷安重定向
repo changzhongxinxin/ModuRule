@@ -4,7 +4,7 @@ scriptings:
 - http_request:
     name: '[酷安]链接重定向'
     match: ^https:\/\/www\.coolapk\.com\/link.*
-    script_url: 
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/%E9%85%B7%E5%AE%89%E9%87%8D%E5%AE%9A%E5%90%91
     timeout: 10
     body_required: false
 mitm:
