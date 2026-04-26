@@ -2,7 +2,7 @@ name: 酷安重定向
 description: 酷安链接重定向
 scriptings:
 - http_request:
-    name: '[酷安]链接重定向'
+    name: '酷安链接重定向'
     match: ^https:\/\/www\.coolapk\.com\/link.*
     script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/%E9%85%B7%E5%AE%89%E9%87%8D%E5%AE%9A%E5%90%91
     timeout: 10
