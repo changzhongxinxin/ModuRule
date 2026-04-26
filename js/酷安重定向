@@ -1,0 +1,11 @@
+if ($request.url.includes("coolapk.com/link")) {
+    let match = $request.url.match(/url=([^&]+)/);
+    if (match) {
+        let realUrl = decodeURIComponent(match[1]);
+        // 在 Egern 中，直接赋值给 $request.url 即可实现重定向
+        $request.url = realUrl;
+    }
+}
+
+// 完成脚本
+$done($request);
