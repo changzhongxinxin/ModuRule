@@ -1,0 +1,13 @@
+name: 酷安重定向
+description: 酷安链接重定向
+scriptings:
+- http_request:
+    name: '[酷安]链接重定向'
+    match: ^https:\/\/www\.coolapk\.com\/link.*
+    script_url: 
+    timeout: 10
+    body_required: false
+mitm:
+  hostnames:
+    includes:
+    - www.coolapk.com
