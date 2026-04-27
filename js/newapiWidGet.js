@@ -24,17 +24,24 @@ export default async function (ctx) {
     try { return JSON.parse(str); } catch (_) { return null; }
   }
 
-  function getSavedHosts() {
-    try {
-      const raw = ctx.env.get(HOSTS_LIST_KEY);
-      if (!raw) return [];
-      const hosts = safeJsonParse(raw) || [];
-      return Array.isArray(hosts) ? hosts.filter(h => h && typeof h === "string") : [];
-    } catch (e) {
-      return [];
-    }
+// 替换原来的 getSavedHosts
+function getSavedHosts() {
+  try {
+    const raw = typeof $persistentStore !== 'undefined' 
+      ? $persistentStore.read(HOSTS_LIST_KEY) 
+      : ctx.env.get(HOSTS_LIST_KEY);
+    if (!raw) return [];
+    const hosts = safeJsonParse(raw) || [];
+    return Array.isArray(hosts) ? hosts.filter(h => h && typeof h === "string") : [];
+  } catch (e) {
+    return [];
   }
+}
 
+// 在 doCheckin 中读取 headers 时同样改造
+const raw = typeof $persistentStore !== 'undefined'
+  ? $persistentStore.read(key)
+  : ctx.env.get(key);
   function headerKeyForHost(h) {
     return `${HEADER_KEY_PREFIX}:${h}`;
   }
