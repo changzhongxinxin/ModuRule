@@ -1,0 +1,16 @@
+name: NewAPI 签到
+description: 适配所有NewAPI源码搭建的中转站，支持多站点自动签到。无需MITM，手动获取Cookie填入即可使用。
+icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/border-radius/new-api-1.png
+scriptings:
+- http_request:
+    name: NewAPI签到获取Headers
+    match: ^https:\/\/.*\/api\/user\/self$
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/newapiCK.js
+    timeout: 120
+    body_required: false
+- schedule:
+    name: NewAPI签到定时执行
+    cron: 10 0 * * *
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/newapi.js
+    timeout: 120
+

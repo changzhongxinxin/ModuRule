@@ -1,0 +1,18 @@
+#!name=Emby上报拦截
+#!desc=拦截部分Emby进度上报
+#!tag = 工具
+#!icon=https://raw.githubusercontent.com/ginibond/ginibond/main/Icons/Forward/Nsfw_emby_qiumingshanjuezhan1.png
+
+[Rule]
+
+#URL-REGEX,(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)?,REJECT-DROP
+
+
+AND,((DOMAIN-SUFFIX,uhdnow.com), (URL-REGEX,/Sessions/Playing(/Progress|/Stopped)?), (USER-AGENT,Forward*)),REJECT-DROP
+
+
+[Rewrite]
+#(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)? reject-200
+
+[MITM]
+hostname = *.uhdnow.com

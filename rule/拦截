@@ -1,0 +1,2 @@
+DOMAIN,signall-api.nuosike.com  // 全能签弹窗
+AND,((DOMAIN,emby.com), (URL-REGEX,/Sessions/Playing(/Progress|/Stopped)?), (URL-REGEX,etf)),REJECT-DROP

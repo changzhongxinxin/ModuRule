@@ -1,0 +1,11 @@
+#!name=SNI 域名替换
+#!desc=将域名重写到指定目标域名，绕过 SNI 阻断
+#!category=工具
+#!icon=https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
+#!arguments=domain:789828.xyz
+
+[URL Rewrite]
+^https?://(emby|notice)\.com https://$1.{{{domain}}} header
+
+[MITM]
+hostname = %INSERT% emby.com,notice.com
