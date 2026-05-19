@@ -1,4 +1,3 @@
-
 const $ = new Env('MiniApp CK捕获');
 
 const headers = $request.headers;
@@ -23,6 +22,7 @@ if (xSession) {
 if (!token) {
     $.log('x-session 与 qp_session 均为空，不做处理');
     $.done();
+    return; // 👈 新增：阻断代码继续向下执行
 }
 
 // 读取旧数据比较（裸值比较）
@@ -31,6 +31,7 @@ const oldData = $persistentStore.read('MiniApp') || '';
 if (oldData === token) {
     $.log('CK 无变化，跳过保存与通知');
     $.done();
+    return; // 👈 新增：阻断代码继续向下执行
 }
 
 // 保存裸 token，不加任何前缀
@@ -40,7 +41,7 @@ if (saveResult) {
     $.notify('MiniApp CK捕获 ✅', subTitle, token.length > 40 ? token.substring(0, 40) + '...' : token);
     $.log(`${subTitle}: ${token}`);
 } else {
-    $.notify('MiniApp CK捕获 ⚠️', '持久化写入失败', '请检查 Surge 存储权限');
+    $.notify('MiniApp CK捕获 ⚠️', '持久化写入失败', '请检查存储权限');
 }
 
 $.done();
