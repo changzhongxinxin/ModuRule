@@ -5,12 +5,12 @@ scriptings:
 - http_request:
     name: NewAPI签到获取Headers
     match: ^https:\/\/.*\/api\/user\/self$
-    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/newapiCK.js
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/NewApi/NewApi获取CK.js
     timeout: 120
     body_required: false
 - schedule:
     name: NewAPI签到定时执行
     cron: 10 0 * * *
-    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/newapi.js
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/NewApi/NewApi签到.js
     timeout: 120
 
