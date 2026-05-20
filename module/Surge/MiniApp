@@ -9,7 +9,7 @@
 MiniApp获取Cookie = type=http-request,pattern=^https://miniapp\.ftp2\.eu\.org/api/user/line,requires-body=0,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/MiniApp(一只猫)/获取CK.js
 
 
-MiniApp定时签到 = type=cron,cronexp="{{{cron}}}",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/Chilledmelon.js,script-update-interval=0,timeout=60
+MiniApp定时签到 = type=cron,cronexp="{{{cron}}}",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/js/MiniApp(一只猫)/签到.js,script-update-interval=0,timeout=60
 
 [MITM]
 hostname = %INSERT% miniapp.ftp2.eu.org
