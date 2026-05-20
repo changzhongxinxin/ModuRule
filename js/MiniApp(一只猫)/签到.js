@@ -1,10 +1,9 @@
 /**
- * @fileoverview MiniApp 自动签到脚本 (Surge)
+ * @fileoverview MiniApp 自动签到脚本 (Surge) - 浏览器指纹完整版
  */
 
 const title = "MiniApp 签到";
 
-// 严格从持久化存储读取，不设置默认值
 const sessionToken = $persistentStore.read("MiniApp");
 
 if (!sessionToken) {
@@ -16,12 +15,20 @@ if (!sessionToken) {
         url: "https://miniapp.ftp2.eu.org/api/user/checkin",
         headers: {
             "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "zh-CN,zh-Hans;q=0.9",
             "Content-Type": "application/json",
+            "Content-Length": "0",
             "Origin": "https://miniapp.ftp2.eu.org",
+            "Referer": "https://miniapp.ftp2.eu.org/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
             "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
             "X-Session": sessionToken,
             "Cookie": `qp_session=${sessionToken}`
-        }
+        },
+        body: ""  // 显式声明空 body，配合 Content-Length: 0
     };
 
     $httpClient.post(request, function(error, response, data) {
@@ -35,22 +42,16 @@ if (!sessionToken) {
         try {
             const obj = JSON.parse(data);
             if (obj.ok) {
-                // 签到成功
                 const msg = obj.message || "签到成功";
                 const newScore = obj.data && obj.data.newScore ? `当前总积分: ${obj.data.newScore}` : "";
-                
                 $notification.post(title, "签到成功 🎉", `${msg}\n${newScore}`);
                 console.log(`${title} 成功: ${data}`);
             } else {
-                // 处理 ok: false 的各种情况
                 const msg = obj.message || "未知状态";
-                
-                // 判断是否为 CK 失效或未登录
                 if (msg.includes("请先登录") || msg.includes("失效") || msg.includes("过期")) {
                     $notification.post(title, "CK 失效 ❌", `${msg}，请重新获取 Token 并更新`);
                     console.log(`${title} 失效: ${data}`);
                 } else {
-                    // 其他业务异常，例如重复签到
                     $notification.post(title, "签到提示 ⚠️", msg);
                     console.log(`${title} 异常: ${data}`);
                 }
