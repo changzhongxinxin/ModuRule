@@ -4,32 +4,25 @@ if (typeof $request === 'undefined' || !$request.body) {
     $.log('未检测到请求体数据，请检查脚本配置位置');
     $.done();
 } else {
-    let body;
-    try {
-        body = JSON.parse($request.body);
-    } catch (e) {
-        $.log('请求体 JSON 解析失败，不做处理');
-        $.done();
-    }
-
-    const token = body.initData || '';
-    const source = 'initData';
-
-    if (!token) {
-        $.log('initData 为空，不做处理');
+    const body = $request.body;
+    
+    // 简单校验一下是不是有效的 JSON 格式（至少包含 initData 关键字）
+    if (!body.includes('initData')) {
+        $.log('请求体中未包含 initData，不做处理');
         $.done();
     } else {
         const oldData = $persistentStore.read('MiniApp') || '';
 
-        if (oldData === token) {
+        if (oldData === body) {
             $.log('CK 无变化，跳过保存与通知');
             $.done();
         } else {
-            const saveResult = $persistentStore.write(token, 'MiniApp');
+            const saveResult = $persistentStore.write(body, 'MiniApp');
             if (saveResult) {
-                const subTitle = oldData ? `CK 已更新 (来自${source})` : `CK 首次保存 (来自${source})`;
-                $.notify('MiniApp CK捕获 ✅', subTitle, token.length > 40 ? token.substring(0, 40) + '...' : token);
-                $.log(`${subTitle}: ${token}`);
+                const subTitle = oldData ? 'CK 已更新 (来自body)' : 'CK 首次保存 (来自body)';
+                const display = body.length > 40 ? body.substring(0, 40) + '...' : body;
+                $.notify('MiniApp CK捕获 ✅', subTitle, display);
+                $.log(`${subTitle}: ${body}`);
             } else {
                 $.notify('MiniApp CK捕获 ⚠️', '持久化写入失败', '请检查存储权限');
             }
