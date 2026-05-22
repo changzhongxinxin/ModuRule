@@ -19,7 +19,7 @@ if (typeof $request === 'undefined' || !$request.body) {
         } else {
             const saveResult = $persistentStore.write(body, 'MiniApp');
             if (saveResult) {
-                const subTitle = oldData ? 'CK 已更新 (来自body)' : 'CK 首次保存 (来自body)';
+                const subTitle = oldData ? 'CK 已更新' : 'CK 首次保存';
                 const display = body.length > 40 ? body.substring(0, 40) + '...' : body;
                 $.notify('MiniApp CK捕获 ✅', subTitle, display);
                 $.log(`${subTitle}: ${body}`);
