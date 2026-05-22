@@ -1,16 +1,16 @@
 /**
  * @fileoverview MiniApp 自动签到脚本 (Surge)
- * 流程：读取持久化 initData → 调用登录接口换取 sid → 使用 sid 签到
+ * 流程：读取持久化 body → 调用登录接口 → 使用 sid 签到
  */
 
 const title = "MiniApp 签到";
 
-// 从持久化存储读取 initData（由捕获脚本写入）
-const initData = $persistentStore.read("MiniApp");
+// 从持久化存储读取完整 body（JSON 字符串）
+const storedBody = $persistentStore.read("MiniApp");
 
-if (!initData) {
-    console.log(`${title} 异常: 找不到 initData，请先获取并写入 Key 为 "MiniApp" 的值。`);
-    $notification.post(title, "未找到 initData ⚠️", "请先配置并写入 initData 到存储中");
+if (!storedBody) {
+    console.log(`${title} 异常: 找不到 body 数据，请先获取并写入 Key 为 "MiniApp" 的值。`);
+    $notification.post(title, "未找到 body ⚠️", "请先配置并捕获请求到存储中");
     $done();
 } else {
     // 通用浏览器指纹请求头（登录和签到共用基础部分）
@@ -28,11 +28,11 @@ if (!initData) {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
     };
 
-    // 第一步：用 initData 登录换取 sid（不带任何认证头）
+    // 第一步：用完整 body 登录换取 sid（不带任何认证头）
     const loginRequest = {
         url: "https://miniapp.ftp2.eu.org/api/auth/telegram",
         headers: commonHeaders,
-        body: JSON.stringify({ initData: initData })
+        body: storedBody  // 直接透传存储的完整 JSON body
     };
 
     $httpClient.post(loginRequest, function(error, response, data) {
@@ -92,7 +92,7 @@ if (!initData) {
                 } else {
                     const msg = obj.message || "未知状态";
                     if (msg.includes("请先登录") || msg.includes("失效") || msg.includes("过期") || msg.includes("Unauthorized")) {
-                        $notification.post(title, "CK 失效 ❌", `${msg}，请重新获取 initData 并更新`);
+                        $notification.post(title, "CK 失效 ❌", `${msg}，请重新获取 body 并更新`);
                         console.log(`${title} CK 失效: ${data2}`);
                     } else {
                         $notification.post(title, "签到提示 ⚠️", msg);
