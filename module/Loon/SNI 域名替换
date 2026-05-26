@@ -5,8 +5,8 @@
 
 
 [Rewrite]
-^https?://(emby|notice)\.com https://$1.789828.xyz header
+^https?://(emby)\.com https://$1.789828.xyz header
 
 [MITM]
-hostname = emby.com,notice.com
+hostname = emby.com
 
