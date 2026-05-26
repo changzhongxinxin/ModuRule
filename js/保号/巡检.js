@@ -1,6 +1,6 @@
 /**
  * Emby 保号 - 定时巡检
- * 完全从持久化读取，脚本内无任何硬编码配置
+ * 完全从持久化 emby_keepalive_data 读取，脚本内无任何硬编码配置
  */
 
 const STORE_KEY = "emby_keepalive_data";
@@ -43,8 +43,9 @@ const STORE_KEY = "emby_keepalive_data";
             continue;
         }
         
-        // 解析 YYYY-MM-DD 为当天 0 点
-        const [y, m, d] = lastStr.split('-').map(Number);
+        // 计算天数差：只取日期部分，忽略时间
+        const datePart = lastStr.split(' ')[0];
+        const [y, m, d] = datePart.split('-').map(Number);
         const lastDate = new Date(y, m - 1, d);
         const diffDays = Math.floor((today - lastDate) / 86400000);
         
