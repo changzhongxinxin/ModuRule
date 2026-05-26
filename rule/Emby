@@ -6,8 +6,6 @@ DOMAIN-SUFFIX,miraiemby.com  // miraiemby
 DOMAIN-SUFFIX,okemby.org  // okemby
 DOMAIN-SUFFIX,lyezi.cc  // 叶子
 DOMAIN-SUFFIX,uhdnow.com  // uhd
-IP-CIDR,138.68.236.33/32,no-resolve  // lyrebirdemby
-IP-CIDR,188.172.228.65/32,no-resolve  // lyrebirdemby
 DOMAIN-SUFFIX,lyrebirdemby.online  // lyrebirdemby
 DOMAIN,stream2.jingzhe.pro  // 惊蛰（播放链接）
 DOMAIN-SUFFIX,hohai.eu.org  // hohai
