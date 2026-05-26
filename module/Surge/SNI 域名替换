@@ -5,7 +5,7 @@
 #!arguments=domain:789828.xyz
 
 [URL Rewrite]
-^https?://(emby|notice)\.com https://$1.{{{domain}}} header
+^https?://(emby)\.com https://$1.{{{domain}}} header
 
 [MITM]
-hostname = %INSERT% emby.com,notice.com
+hostname = %INSERT% emby.com
