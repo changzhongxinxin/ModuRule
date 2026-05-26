@@ -23,10 +23,10 @@ rules:
     match: /Sessions/Playing(/Progress|/Stopped)?
     policy: "{RuleBlock}"
 url_rewrites:
-- match: ^https?://(emby|notice)\.com
+- match: ^https?://(emby|proxy)\.com
   location: https://$1.{domain}
 mitm:
   hostnames:
     includes:
     - emby.com
-    - notice.com
+    - proxy.com
