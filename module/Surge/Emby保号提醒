@@ -1,0 +1,13 @@
+#!name=Emby保号提醒通知
+#!desc=存储播放停止时间,比较当前时间并通知保号
+#!category=工具
+#!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
+
+
+[Script]
+巡检通知 = type=cron,cronexp="0 6,12,18,0 * * *",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/巡检.js,script-update-interval=0
+
+播放停止触发 = type=http-response,pattern=^https?:\/\/[^\/]+\/.*Playing\/Stopped,requires-body=0,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/触发.js,script-update-interval=0
+
+[MITM]
+hostname = %INSERT% feiyue.lol,miraiemby.com,embymv.link
