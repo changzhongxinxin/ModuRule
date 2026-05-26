@@ -7,6 +7,8 @@ DOMAIN-SUFFIX,okemby.org  // okemby
 DOMAIN-SUFFIX,lyezi.cc  // 叶子
 DOMAIN-SUFFIX,uhdnow.com  // uhd
 DOMAIN-SUFFIX,lyrebirdemby.online  // lyrebirdemby
+IP-CIDR,138.68.236.33/32,no-resolve  // lyrebirdemby
+IP-CIDR,188.172.228.65/32,no-resolve  // lyrebirdemby
 DOMAIN,stream2.jingzhe.pro  // 惊蛰（播放链接）
 DOMAIN-SUFFIX,hohai.eu.org  // hohai
 DOMAIN,emby.bangumi.ca  // Nya
