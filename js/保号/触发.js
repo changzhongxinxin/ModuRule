@@ -14,7 +14,8 @@ const DEFAULT_CONFIG_TEXT =
 `# Emby保号配置格式: 服名|线路关键词1,关键词2|天数
 桃子|embymv.link,peach|13
 麻衣|miraiemby,mirai|20
-飞跃彩虹|feiyue.lol,fych|55`;
+飞跃彩虹|feiyue.lol,fych|55
+Lunaris Vault|lunarisvault.com|90`;
 
 // 解析配置文本
 const parseConfig = (str) => {
