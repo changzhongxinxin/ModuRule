@@ -3,7 +3,7 @@
  * 完全从持久化 emby_keepalive_data 读取，脚本内无任何硬编码配置
  */
 
-const STORE_KEY = "emby_keepalive_data";
+const STORE_KEY = "Emby_keepalive_Data";
 
 (() => {
     const stored = $persistentStore.read(STORE_KEY);
