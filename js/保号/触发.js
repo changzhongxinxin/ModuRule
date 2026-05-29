@@ -4,8 +4,8 @@
  * 心跳存储: 持久化 emby_keepalive_data (JSON, 带缩进)
  */
 
-const CONFIG_KEY = "emby_keepalive_config";
-const HEARTBEAT_KEY = "emby_keepalive_data";
+const CONFIG_KEY = "Emby_Keepalive_Config";
+const HEARTBEAT_KEY = "Emby_keepalive_Data";
 
 const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
