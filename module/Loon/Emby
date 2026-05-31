@@ -8,7 +8,7 @@
 #URL-REGEX,(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)?,REJECT-DROP
 
 
-AND,((DOMAIN-SUFFIX,uhdnow.com), (URL-REGEX,/Sessions/Playing(/Progress|/Stopped)?), (USER-AGENT,Forward*)),REJECT-DROP
+AND,((USER-AGENT,SenPlayer*), (OR,((DOMAIN,emby.com), (DOMAIN-SUFFIX,uhdnow.com))), (URL-REGEX,uhd), (URL-REGEX,/Sessions/Playing(/Progress|/Stopped)?)),REJECT-DROP
 
 
 [Rewrite]
