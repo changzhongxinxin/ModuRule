@@ -18,21 +18,6 @@ compat_arguments_schema:
 icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 dns: {}
 rules:
-- and:
-    match:
-    - or:
-        match:
-        - domain_suffix:
-            match: uhdnow.com
-        - domain_suffix:
-            match: 789828.xyz
-        - domain:
-            match: emby.com
-    - url_regex:
-        match: uhd
-    - url_regex:
-        match: /Sessions/Playing(/Progress|/Stopped)?
-    policy: REJECT-DROP
 - url_regex:
     name: 拦截数据上报
     match: /Sessions/Playing(/Progress|/Stopped)?
