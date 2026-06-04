@@ -18,11 +18,7 @@ compat_arguments_schema:
 icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 dns: {}
 rules:
-- url_regex:
-    name: 拦截数据上报
-    match: /Sessions/Playing(/Progress|/Stopped)?
-    policy: "{RuleBlock}"
-    disabled: true
+
 url_rewrites:
 - match: ^https?://(emby|proxy)\.com
   location: https://$1.{domain}
