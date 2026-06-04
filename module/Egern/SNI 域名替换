@@ -22,6 +22,7 @@ rules:
     name: 拦截数据上报
     match: /Sessions/Playing(/Progress|/Stopped)?
     policy: "{RuleBlock}"
+		disabled: true
 url_rewrites:
 - match: ^https?://(emby|proxy)\.com
   location: https://$1.{domain}
