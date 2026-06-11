@@ -252,21 +252,22 @@ async function sendTelegramNotify(botToken, chatId, results) {
       if (addedList.length === 0 && removedList.length === 0) continue;
 
       const recordName = r && r.recordName ? r.recordName : '未知记录';
-      // 用 <tg-spoiler> 实现遮罩
       lines.push(`📋 <tg-spoiler>${safeEscapeHtml(recordName)}</tg-spoiler>`);
       lines.push('');
       
       if (addedList.length > 0) {
         lines.push('✅ 新增:');
         for (const ip of addedList) {
-          if (ip) lines.push(`  <code>${safeEscapeHtml(ip)}</code>`);
+          // 👉 直接嵌套：既是等宽，又是斜体
+          if (ip) lines.push(`  <code><i>${safeEscapeHtml(ip)}</i></code>`);
         }
       }
 
       if (removedList.length > 0) {
         lines.push('❌ 删除:');
         for (const ip of removedList) {
-          if (ip) lines.push(`  <code>${safeEscapeHtml(ip)}</code>`);
+          // 👉 直接嵌套：既是等宽，又是斜体
+          if (ip) lines.push(`  <code><i>${safeEscapeHtml(ip)}</i></code>`);
         }
       }
 
@@ -282,7 +283,7 @@ async function sendTelegramNotify(botToken, chatId, results) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: 'HTML', // 改用 HTML 解析模式
+        parse_mode: 'HTML',
         disable_web_page_preview: true
       })
     });
@@ -290,6 +291,8 @@ async function sendTelegramNotify(botToken, chatId, results) {
     console.error('Telegram 通知发送失败:', e.message);
   }
 }
+
+
 
 function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj, null, 2), {
