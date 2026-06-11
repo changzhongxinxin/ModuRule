@@ -227,29 +227,46 @@ async function syncDNSRecords(token, zoneId, name, ips, existing, ttl) {
 
 // ==================== Telegram 通知 ====================
 
+// HTML 模式专用安全转义工具
+function safeEscapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  return text.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 async function sendTelegramNotify(botToken, chatId, results) {
   try {
+    if (!results || !Array.isArray(results) || results.length === 0) return;
+
     const lines = [];
-    lines.push(`🔄 CF IP 优选更新`);
-    lines.push(`⏰ ${formatChinaTime()}`);
+    lines.push(`🔄 <b>CF IP 优选更新</b>`);
+    lines.push(`⏰ ${safeEscapeHtml(formatChinaTime())}`);
     lines.push('');
 
     for (const r of results) {
-      if (r.added.length === 0 && r.removed.length === 0) continue;
+      const addedList = r && Array.isArray(r.added) ? r.added : [];
+      const removedList = r && Array.isArray(r.removed) ? r.removed : [];
 
-      lines.push(`📋 ${r.recordName}`);
+      if (addedList.length === 0 && removedList.length === 0) continue;
 
-      if (r.added.length > 0) {
+      const recordName = r && r.recordName ? r.recordName : '未知记录';
+      // 用 <tg-spoiler> 实现遮罩
+      lines.push(`📋 <tg-spoiler>${safeEscapeHtml(recordName)}</tg-spoiler>`);
+      lines.push('');
+      
+      if (addedList.length > 0) {
         lines.push('✅ 新增:');
-        for (const ip of r.added) {
-          lines.push(`  ${ip}`);
+        for (const ip of addedList) {
+          if (ip) lines.push(`  <code>${safeEscapeHtml(ip)}</code>`);
         }
       }
 
-      if (r.removed.length > 0) {
+      if (removedList.length > 0) {
         lines.push('❌ 删除:');
-        for (const ip of r.removed) {
-          lines.push(`  ${ip}`);
+        for (const ip of removedList) {
+          if (ip) lines.push(`  <code>${safeEscapeHtml(ip)}</code>`);
         }
       }
 
@@ -265,6 +282,7 @@ async function sendTelegramNotify(botToken, chatId, results) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
+        parse_mode: 'HTML', // 改用 HTML 解析模式
         disable_web_page_preview: true
       })
     });
