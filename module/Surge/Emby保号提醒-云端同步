@@ -1,0 +1,15 @@
+#!name=Emby保号提醒通知-云端同步
+#!desc=存储播放停止时间到EdgeGist云端，定时巡检比较并通知保号
+#!category=工具
+#!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
+#!arguments=edgegistUrl:请填写EdgeGist地址,ownerToken:请填写OwnerToken,gistDesc:,gistFile:
+#!arguments-desc=[参数设置]\n\n⓵ edgegistUrl: EdgeGist部署地址，如 https://xxx.workers.dev\n\n⓶ ownerToken: EDGEGIST_OWNER_TOKEN值\n\n⓷ gistDesc: Gist描述（留空默认：Emby Keepalive Data）\n\n⓸ gistFile: Gist文件名（留空默认：emby_keepalive_data.json）
+
+
+[Script]
+巡检通知 = type=cron,cronexp="0 6,12,18,0 * * *",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/巡检-云端同步.js,script-update-interval=0,argument=edgegistUrl={{{edgegistUrl}}}&ownerToken={{{ownerToken}}}&gistDesc={{{gistDesc}}}&gistFile={{{gistFile}}}
+
+播放停止触发 = type=http-response,pattern=^https?:\/\/[^\/]+\/.*(Stopped|Playing\/Stop|ReportPlaybackStopped|Playback\/Stop),requires-body=0,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/触发-云端同步.js,script-update-interval=0,argument=edgegistUrl={{{edgegistUrl}}}&ownerToken={{{ownerToken}}}&gistDesc={{{gistDesc}}}&gistFile={{{gistFile}}}
+
+[MITM]
+hostname = %INSERT% *.feiyue.lol,*.miraiemby.com,embymv.link,*lunarisvault.com,lite.cn2gias.uk
