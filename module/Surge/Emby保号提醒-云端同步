@@ -2,7 +2,7 @@
 #!desc=存储播放停止时间到EdgeGist云端，定时巡检比较并通知保号
 #!category=工具
 #!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
-#!arguments=gistUrl:请填写Gist地址,Token:请填写Token,gistDescription:Emby Keepalive Data,gistFilename:emby_keepalive_data.json
+#!arguments=gistUrl:请填写Gist地址,Token:请填写Token,gistDescription:"",gistFilename:""
 #!arguments-desc=[参数设置]\n\n⓵ gistUrl: Gist部署地址，如 https://xxx.workers.dev\n\n⓶ Token: TOKEN值\n\n⓷ gistDescription: Gist描述（留空默认：Emby Keepalive Data）\n\n⓸ gistFilename: Gist文件名（留空默认：emby_keepalive_data.json）
 
 
