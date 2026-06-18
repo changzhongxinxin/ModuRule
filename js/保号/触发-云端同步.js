@@ -17,8 +17,8 @@ try {
 }
 
 const EDGEGIST = {
-    baseUrl: arg.edgegistUrl || arg.url || "",           // EdgeGist 部署地址
-    ownerToken: arg.ownerToken || arg.token || "",      // EDGEGIST_OWNER_TOKEN
+    baseUrl: arg.edgegistUrl || "",           // EdgeGist 部署地址
+    ownerToken: arg.ownerToken || "",      // EDGEGIST_OWNER_TOKEN
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
