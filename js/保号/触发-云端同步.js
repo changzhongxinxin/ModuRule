@@ -191,7 +191,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
         }
     }
     if (!mightMatch) {
-        console.log(`[Emby保号] 跳过: ${host} 不在配置中`);
+        console.log(`[Emby保号] 跳过: ${url} 不在配置中`);
         return $done({});
     }
     
