@@ -16,8 +16,8 @@ try {
 }
 
 const EDGEGIST = {
-    baseUrl: arg.edgegistUrl || "",
-    ownerToken: arg.ownerToken || "",
+    baseUrl: arg.gistUrl || "https://api.github.com",
+    ownerToken: arg.Token || "",
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
