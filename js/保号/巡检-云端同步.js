@@ -1,5 +1,5 @@
 /**
- * Emby 保号 - 定时巡检 (EdgeGist 云端版)
+ * Emby 保号 - 定时巡检 (Gist 云端版)
  */
 
 // ========== 从 $argument 解析配置 ==========
@@ -10,19 +10,19 @@ try {
     }
 } catch (e) {}
 
-const EDGEGIST = {
+const GIST = {
     baseUrl: arg.gistUrl || "https://api.github.com",
     ownerToken: arg.Token || "",
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
 
-// ========== EdgeGist 读取 ==========
+// ========== Gist 读取 ==========
 const readHeartbeatFromCloud = (callback) => {
     $httpClient.get({
-        url: `${EDGEGIST.baseUrl}/gists`,
+        url: `${GIST.baseUrl}/gists`,
         headers: {
-            "Authorization": `token ${EDGEGIST.ownerToken}`,
+            "Authorization": `token ${GIST.ownerToken}`,
             "Accept": "application/json"
         }
     }, (err, resp, listData) => {
@@ -39,16 +39,16 @@ const readHeartbeatFromCloud = (callback) => {
             return;
         }
         
-        const targetGist = gists.find(g => g.description === EDGEGIST.gistDescription);
+        const targetGist = gists.find(g => g.description === GIST.gistDescription);
         if (!targetGist) {
             callback(null, "云端暂无数据，请先触发 Stop 请求");
             return;
         }
         
         $httpClient.get({
-            url: `${EDGEGIST.baseUrl}/gists/${targetGist.id}`,
+            url: `${GIST.baseUrl}/gists/${targetGist.id}`,
             headers: {
-                "Authorization": `token ${EDGEGIST.ownerToken}`,
+                "Authorization": `token ${GIST.ownerToken}`,
                 "Accept": "application/json"
             }
         }, (err2, resp2, detailData) => {
@@ -61,7 +61,7 @@ const readHeartbeatFromCloud = (callback) => {
                 const gist = JSON.parse(detailData);
                 
                 // ========== 修复：使用 gistFilename 定位文件 ==========
-                let filename = EDGEGIST.gistFilename;
+                let filename = GIST.gistFilename;
                 let fileObj = gist.files[filename];
                 
                 // 如果指定文件名不存在，fallback 到第一个文件
@@ -89,8 +89,8 @@ const readHeartbeatFromCloud = (callback) => {
 
 // ========== 主逻辑 ==========
 (() => {
-    if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
-        $notification.post("Emby 巡检", "配置错误", "缺少 EdgeGist 参数");
+    if (!GIST.baseUrl || !GIST.ownerToken) {
+        $notification.post("Emby 巡检", "配置错误", "缺少 Gist 参数");
         return $done();
     }
 
