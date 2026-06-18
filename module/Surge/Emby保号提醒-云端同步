@@ -2,8 +2,8 @@
 #!desc=存储播放停止时间到EdgeGist云端，定时巡检比较并通知保号
 #!category=工具
 #!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
-#!arguments=edgegistUrl:请填写EdgeGist地址,ownerToken:请填写OwnerToken,gistDesc:,gistFile:
-#!arguments-desc=[参数设置]\n\n⓵ edgegistUrl: EdgeGist部署地址，如 https://xxx.workers.dev\n\n⓶ ownerToken: EDGEGIST_OWNER_TOKEN值\n\n⓷ gistDesc: Gist描述（留空默认：Emby Keepalive Data）\n\n⓸ gistFile: Gist文件名（留空默认：emby_keepalive_data.json）
+#!arguments=edgegistUrl:请填写EdgeGist地址,ownerToken:请填写OwnerToken
+#!arguments-desc=[参数设置]\n\n⓵ edgegistUrl: EdgeGist部署地址，如 https://xxx.workers.dev\n\n⓶ ownerToken: EDGEGIST_OWNER_TOKEN值
 
 
 [Script]
