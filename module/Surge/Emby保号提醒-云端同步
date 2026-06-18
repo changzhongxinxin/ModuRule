@@ -7,7 +7,7 @@
 
 
 [Script]
-巡检通知 = type=cron,cronexp="0 6,12,18,0 * * *",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/巡检-云端同步.js,script-update-interval=0,timeout=30,argument=gistUrl={{{gistUrl}}}&Token={{{Token}}}&gistDescriptionription={{{gistDescription}}}&gistFilenamename={{{gistFilenamename}}}
+巡检通知 = type=cron,cronexp="0 6,12,18,0 * * *",wake-system=1,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/巡检-云端同步.js,script-update-interval=0,timeout=30,argument=gistUrl={{{gistUrl}}}&Token={{{Token}}}&gistDescriptionription={{{gistDescription}}}&gistFilenamename={{{gistFilename}}}
 
 播放停止触发 = type=http-response,pattern=^https?:\/\/[^\/]+\/.*(Stopped|Playing\/Stop|ReportPlaybackStopped|Playback\/Stop),requires-body=0,timeout=30,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/触发-云端同步.js,script-update-interval=0,argument=gistUrl={{{gistUrl}}}&Token={{{Token}}}&gistDescriptionription={{{gistDescription}}}&gistFilenamename={{{gistFilename}}}
 
