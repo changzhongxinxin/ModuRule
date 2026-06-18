@@ -11,8 +11,8 @@ try {
 } catch (e) {}
 
 const EDGEGIST = {
-    baseUrl: arg.edgegistUrl || arg.url || "",
-    ownerToken: arg.ownerToken || arg.token || "",
+    baseUrl: arg.edgegistUrl || "",
+    ownerToken: arg.ownerToken || "",
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
