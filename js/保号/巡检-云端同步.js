@@ -59,8 +59,26 @@ const readHeartbeatFromCloud = (callback) => {
             
             try {
                 const gist = JSON.parse(detailData);
-                const filename = Object.keys(gist.files)[0];
-                const content = gist.files[filename].content;
+                
+                // ========== 修复：使用 gistFilename 定位文件 ==========
+                let filename = EDGEGIST.gistFilename;
+                let fileObj = gist.files[filename];
+                
+                // 如果指定文件名不存在，fallback 到第一个文件
+                if (!fileObj) {
+                    const filenames = Object.keys(gist.files);
+                    if (filenames.length > 0) {
+                        filename = filenames[0];
+                        fileObj = gist.files[filename];
+                    }
+                }
+                
+                if (!fileObj) {
+                    callback(null, "Gist 中没有文件");
+                    return;
+                }
+                
+                const content = fileObj.content;
                 callback(JSON.parse(content), null);
             } catch (e) {
                 callback(null, "解析 Gist 数据失败: " + e.message);
@@ -70,7 +88,6 @@ const readHeartbeatFromCloud = (callback) => {
 };
 
 // ========== 主逻辑 ==========
-// 使用 IIFE 包裹，避免顶层 return 问题
 (() => {
     if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
         $notification.post("Emby 巡检", "配置错误", "缺少 EdgeGist 参数");
@@ -78,7 +95,6 @@ const readHeartbeatFromCloud = (callback) => {
     }
 
     readHeartbeatFromCloud((data, errorMsg) => {
-        // 云端获取失败，弹通知
         if (errorMsg) {
             $notification.post("Emby 巡检", "云端获取失败", errorMsg);
             return $done();
