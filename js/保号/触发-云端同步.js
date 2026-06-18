@@ -1,11 +1,11 @@
 /**
- * Emby 保号 - Stop 触发器 (EdgeGist 云端版)
+ * Emby 保号 - Stop 触发器 (Gist 云端版)
  * 配置源: 脚本内写死（不再读取持久化）
- * 心跳存储: EdgeGist 云端 Gist（JSON）
- * EdgeGist 配置: 从 $argument 传入
+ * 心跳存储: Gist 云端 Gist（JSON）
+ * Gist 配置: 从 $argument 传入
  */
 
-// ========== 从 $argument 解析 EdgeGist 配置 ==========
+// ========== 从 $argument 解析 Gist 配置 ==========
 let arg = {};
 try {
     if (typeof $argument !== 'undefined' && $argument) {
@@ -15,7 +15,7 @@ try {
     console.log("[Emby保号] ⚠️ $argument 解析失败");
 }
 
-const EDGEGIST = {
+const GIST = {
     baseUrl: arg.gistUrl || "https://api.github.com",
     ownerToken: arg.Token || "",
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
@@ -56,12 +56,12 @@ const getDateStr = () => {
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
-// ========== EdgeGist API 封装 ==========
+// ========== Gist API 封装 ==========
 const readHeartbeatFromCloud = (callback) => {
     $httpClient.get({
-        url: `${EDGEGIST.baseUrl}/gists`,
+        url: `${GIST.baseUrl}/gists`,
         headers: {
-            "Authorization": `token ${EDGEGIST.ownerToken}`,
+            "Authorization": `token ${GIST.ownerToken}`,
             "Accept": "application/json"
         }
     }, (err, resp, listData) => {
@@ -80,7 +80,7 @@ const readHeartbeatFromCloud = (callback) => {
             return;
         }
         
-        const targetGist = gists.find(g => g.description === EDGEGIST.gistDescription);
+        const targetGist = gists.find(g => g.description === GIST.gistDescription);
         if (!targetGist) {
             console.log("[Emby保号] ℹ️ 云端无历史数据，将创建新 Gist");
             callback({});
@@ -88,9 +88,9 @@ const readHeartbeatFromCloud = (callback) => {
         }
         
         $httpClient.get({
-            url: `${EDGEGIST.baseUrl}/gists/${targetGist.id}`,
+            url: `${GIST.baseUrl}/gists/${targetGist.id}`,
             headers: {
-                "Authorization": `token ${EDGEGIST.ownerToken}`,
+                "Authorization": `token ${GIST.ownerToken}`,
                 "Accept": "application/json"
             }
         }, (err2, resp2, detailData) => {
@@ -117,10 +117,10 @@ const readHeartbeatFromCloud = (callback) => {
 
 const writeHeartbeatToCloud = (data, existingGistId, callback) => {
     const body = JSON.stringify({
-        description: EDGEGIST.gistDescription,
+        description: GIST.gistDescription,
         public: false,
         files: {
-            [EDGEGIST.gistFilename]: {
+            [GIST.gistFilename]: {
                 content: JSON.stringify(data, null, 2)
             }
         }
@@ -128,13 +128,13 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
     
     const method = existingGistId ? "patch" : "post";
     const url = existingGistId 
-        ? `${EDGEGIST.baseUrl}/gists/${existingGistId}`
-        : `${EDGEGIST.baseUrl}/gists`;
+        ? `${GIST.baseUrl}/gists/${existingGistId}`
+        : `${GIST.baseUrl}/gists`;
     
     $httpClient[method]({
         url: url,
         headers: {
-            "Authorization": `token ${EDGEGIST.ownerToken}`,
+            "Authorization": `token ${GIST.ownerToken}`,
             "Content-Type": "application/json",
             "Accept": "application/json"
         },
@@ -142,7 +142,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
     }, (err, resp, responseData) => {
         if (err) {
             console.log(`[Emby保号] ❌ 云端写入失败: ${err}`);
-            $notification.post("Emby 保号", "❌ 上传失败", `无法同步到 EdgeGist\n${err}`);
+            $notification.post("Emby 保号", "❌ 上传失败", `无法同步到 Gist\n${err}`);
             if (callback) callback(false);
             return;
         }
@@ -153,7 +153,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
             if (callback) callback(true, result.id);
         } catch (e) {
             console.log("[Emby保号] ⚠️ 云端响应解析失败");
-            $notification.post("Emby 保号", "⚠️ 上传异常", "EdgeGist 响应解析失败");
+            $notification.post("Emby 保号", "⚠️ 上传异常", "Gist 响应解析失败");
             if (callback) callback(false);
         }
     });
@@ -163,10 +163,10 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
 // 使用 IIFE 包裹，避免顶层 return 问题
 (() => {
     // 检查必要参数
-    if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
-        console.log("[Emby保号] ❌ 缺少 EdgeGist 配置，请检查 $argument");
-        console.log("[Emby保号] 需要: edgegistUrl=xxx&ownerToken=xxx");
-        $notification.post("Emby 保号", "❌ 配置错误", "缺少 EdgeGist 参数\n请检查 $argument");
+    if (!GIST.baseUrl || !GIST.ownerToken) {
+        console.log("[Emby保号] ❌ 缺少 Gist 配置，请检查 $argument");
+        console.log("[Emby保号] 需要: GistUrl=xxx&ownerToken=xxx");
+        $notification.post("Emby 保号", "❌ 配置错误", "缺少 Gist 参数\n请检查 $argument");
         return $done({});
     }
 
