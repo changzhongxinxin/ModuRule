@@ -6,7 +6,6 @@
  */
 
 // ========== 从 $argument 解析 EdgeGist 配置 ==========
-// 传入格式: edgegistUrl=xxx&ownerToken=xxx
 let arg = {};
 try {
     if (typeof $argument !== 'undefined' && $argument) {
@@ -17,19 +16,11 @@ try {
 }
 
 const EDGEGIST = {
-    baseUrl: arg.edgegistUrl || "",           // EdgeGist 部署地址
-    ownerToken: arg.ownerToken || "",      // EDGEGIST_OWNER_TOKEN
+    baseUrl: arg.edgegistUrl || "",
+    ownerToken: arg.ownerToken || "",
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
-
-// 检查必要参数
-if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
-    console.log("[Emby保号] ❌ 缺少 EdgeGist 配置，请检查 $argument");
-    console.log("[Emby保号] 需要: edgegistUrl=xxx&ownerToken=xxx");
-	$notification.post("Emby 保号", "❌ 配置错误", "缺少 EdgeGist 参数\n请检查 $argument");
-    return $done({});
-}
 
 // ========== 本地配置（写死，不再读取持久化）==========
 const DEFAULT_CONFIG_TEXT = 
@@ -66,7 +57,6 @@ const getDateStr = () => {
 };
 
 // ========== EdgeGist API 封装 ==========
-
 const readHeartbeatFromCloud = (callback) => {
     $httpClient.get({
         url: `${EDGEGIST.baseUrl}/gists`,
@@ -152,7 +142,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
     }, (err, resp, responseData) => {
         if (err) {
             console.log(`[Emby保号] ❌ 云端写入失败: ${err}`);
-			$notification.post("Emby 保号", "❌ 上传失败", `无法同步到 EdgeGist\n${err}`);
+            $notification.post("Emby 保号", "❌ 上传失败", `无法同步到 EdgeGist\n${err}`);
             if (callback) callback(false);
             return;
         }
@@ -163,14 +153,23 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
             if (callback) callback(true, result.id);
         } catch (e) {
             console.log("[Emby保号] ⚠️ 云端响应解析失败");
-			$notification.post("Emby 保号", "⚠️ 上传异常", "EdgeGist 响应解析失败");
+            $notification.post("Emby 保号", "⚠️ 上传异常", "EdgeGist 响应解析失败");
             if (callback) callback(false);
         }
     });
 };
 
 // ========== 主逻辑 ==========
+// 使用 IIFE 包裹，避免顶层 return 问题
 (() => {
+    // 检查必要参数
+    if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
+        console.log("[Emby保号] ❌ 缺少 EdgeGist 配置，请检查 $argument");
+        console.log("[Emby保号] 需要: edgegistUrl=xxx&ownerToken=xxx");
+        $notification.post("Emby 保号", "❌ 配置错误", "缺少 EdgeGist 参数\n请检查 $argument");
+        return $done({});
+    }
+
     const url = $request.url || "";
     const host = $request.headers?.Host || url.match(/https?:\/\/([^\/]+)/)?.[1] || "";
     

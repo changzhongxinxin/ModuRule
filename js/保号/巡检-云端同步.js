@@ -17,11 +17,6 @@ const EDGEGIST = {
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
 
-if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
-    $notification.post("Emby 巡检", "配置错误", "缺少 EdgeGist 参数");
-    return $done();
-}
-
 // ========== EdgeGist 读取 ==========
 const readHeartbeatFromCloud = (callback) => {
     $httpClient.get({
@@ -75,7 +70,13 @@ const readHeartbeatFromCloud = (callback) => {
 };
 
 // ========== 主逻辑 ==========
+// 使用 IIFE 包裹，避免顶层 return 问题
 (() => {
+    if (!EDGEGIST.baseUrl || !EDGEGIST.ownerToken) {
+        $notification.post("Emby 巡检", "配置错误", "缺少 EdgeGist 参数");
+        return $done();
+    }
+
     readHeartbeatFromCloud((data, errorMsg) => {
         // 云端获取失败，弹通知
         if (errorMsg) {
