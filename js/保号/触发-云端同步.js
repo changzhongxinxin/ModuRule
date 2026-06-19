@@ -29,7 +29,7 @@ const DEFAULT_CONFIG_TEXT =
 麻衣|miraiemby,mirai|20
 飞跃彩虹|feiyue.lol,fych|55
 SNTP Media Lite|cn2gias,sntp|28
-Lunaris Vault|lunarisvault.vip|85`;
+Lunaris Vault|lunarisvault|85`;
 
 const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
