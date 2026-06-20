@@ -1,7 +1,7 @@
 /**
  * Emby 保号 - Stop 触发器 (Gist 云端版)
  * 配置源: 脚本内写死（不再读取持久化）
- * 心跳存储: Gist 云端 Gist（JSON）
+ * 存储: Gist 云端 Gist（JSON）
  * Gist 配置: 从 $argument 传入
  */
 
@@ -106,7 +106,7 @@ const readHeartbeatFromCloud = (callback) => {
                 const filename = Object.keys(gist.files)[0];
                 const content = gist.files[filename].content;
                 const data = JSON.parse(content);
-                console.log("[Emby保号] ✅ 已从云端读取心跳数据");
+                console.log("[Emby保号] ✅ 已从云端读取数据");
                 callback(data, targetGist.id);
             } catch (e) {
                 console.log("[Emby保号] ⚠️ 解析云端数据失败，使用空数据");
