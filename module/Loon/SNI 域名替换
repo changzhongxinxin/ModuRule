@@ -4,8 +4,13 @@
 #!tag=工具
 
 
+[Host]
+emby.com = emby.789828.xyz
+
 [Rewrite]
-^https?://(emby)\.com https://$1.789828.xyz header
+^https?://(emby)\.com header https://$1.789828.xyz
+
+
 
 [MITM]
 hostname = emby.com
