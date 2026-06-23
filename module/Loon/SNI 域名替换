@@ -5,7 +5,7 @@
 
 
 [Host]
-emby.com = emby.789828.xyz
+#emby.com = emby.789828.xyz
 
 [Rewrite]
 ^https?://(emby)\.com header https://$1.789828.xyz

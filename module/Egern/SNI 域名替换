@@ -16,7 +16,7 @@ compat_arguments_schema:
     description: '要替换的域名'
     default_value: "789828.xyz"
 icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
-dns:
+#dns:
   hosts:
     emby.com:
     - emby.{domain}

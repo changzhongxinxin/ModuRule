@@ -8,7 +8,7 @@
 ^https?://(emby)\.com https://$1.{{{domain}}} header
 
 [Host]
-emby.com = emby.{{{domain}}}
+#emby.com = emby.{{{domain}}}
 
 [MITM]
 hostname = %INSERT% emby.com
