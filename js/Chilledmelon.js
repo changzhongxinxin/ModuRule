@@ -1,6 +1,7 @@
 /**
  * Chilledmelon 自动登录 (终极安全版)
  * 修复了所有作用域提升及 TDZ 报错，逻辑全闭环
+ * 新增：Me 接口网络请求失败自动重试机制
  */
 
 // ============ [1. 基础常量与网络配置] ============
@@ -54,7 +55,9 @@ if (!token) {
     requestMe();
 }
 
-// 新增：按需加载账号密码
+// ============ [5. 核心方法区] ============
+
+// 按需加载账号密码
 function loadCredentials() {
     if (typeof $argument !== "undefined" && $argument) {
         try {
@@ -74,9 +77,8 @@ function loadCredentials() {
     if (!password) password = $persistentStore.read(PASS_KEY) || "";
 }
 
-// ============ [5. 核心方法区] ============
-
-function requestMe() {
+// Me 接口请求 (附带重试逻辑)
+function requestMe(retryCount = 0) {
     const options = {
         url: "https://www.chilledmelon.com/api/auth/me",
         headers: { ...commonHeaders, 'x-admin-token': token }
@@ -84,8 +86,19 @@ function requestMe() {
 
     $httpClient.get(options, (err, resp, data) => {
         if (err) {
-            console.log("Me 接口网络请求失败: " + err);
-            $notification.post("Chilledmelon", "Me 接口网络请求失败", String(err));
+            console.log(`Me 接口网络请求失败 (第 ${retryCount + 1} 次尝试): ` + err);
+            
+            // 如果尝试次数小于 1 (即这是第1次失败)，则进行第2次重试
+            if (retryCount < 1) {
+                console.log("网络波动，1秒后将进行重试...");
+                setTimeout(() => {
+                    requestMe(retryCount + 1);
+                }, 1000);
+                return;
+            }
+            
+            // 两次都失败才发通知并结束
+            $notification.post("Chilledmelon", "Me 接口网络请求失败", `已连续失败2次: ${String(err)}`);
             $done();
             return;
         }
@@ -115,6 +128,7 @@ function requestMe() {
     });
 }
 
+// 登录接口
 function doLogin() {
     const options = {
         url: "https://www.chilledmelon.com/api/auth/login",
@@ -156,6 +170,7 @@ function doLogin() {
     });
 }
 
+// 过期检查
 function checkExpire(expireStr) {
     let expireTime = new Date(expireStr).getTime();
     let days = (expireTime - Date.now()) / (1000 * 60 * 60 * 24);
