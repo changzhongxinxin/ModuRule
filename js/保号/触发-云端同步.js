@@ -3,6 +3,7 @@
  * 配置源: 脚本内写死（不再读取持久化）
  * 存储: Gist 云端 Gist（JSON）
  * Gist 配置: 从 $argument 传入
+ * 新增：读取和写入均支持网络请求失败自动重试机制（最大重试1次，延迟1秒），并输出详细日志
  */
 
 // ========== 从 $argument 解析 Gist 配置 ==========
@@ -57,8 +58,8 @@ const getDateStr = () => {
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
-// ========== Gist API 封装 ==========
-const readHeartbeatFromCloud = (callback) => {
+// ========== Gist API 封装 (附带重试逻辑) ==========
+const readHeartbeatFromCloud = (callback, retryCount = 0) => {
     $httpClient.get({
         url: `${GIST.baseUrl}/gists`,
         headers: {
@@ -66,8 +67,15 @@ const readHeartbeatFromCloud = (callback) => {
             "Accept": "application/json"
         }
     }, (err, resp, listData) => {
+        // 请求列表失败拦截与重试
         if (err || !listData) {
-            console.log("[Emby保号] ⚠️ 读取 Gist 列表失败，使用空数据");
+            console.log(`[Emby保号] ⚠️ 读取 Gist 列表失败 (第 ${retryCount + 1} 次尝试): ${err || "无响应"}`);
+            if (retryCount < 1) {
+                console.log("[Emby保号] ℹ️ 1秒后将进行重试读取列表...");
+                setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
+                return;
+            }
+            console.log("[Emby保号] ⚠️ 重试耗尽，使用空数据作为 fallback");
             callback({});
             return;
         }
@@ -95,8 +103,15 @@ const readHeartbeatFromCloud = (callback) => {
                 "Accept": "application/json"
             }
         }, (err2, resp2, detailData) => {
+            // 请求详情失败拦截与重试
             if (err2 || !detailData) {
-                console.log("[Emby保号] ⚠️ 读取 Gist 详情失败，使用空数据");
+                console.log(`[Emby保号] ⚠️ 读取 Gist 详情失败 (第 ${retryCount + 1} 次尝试): ${err2 || "无响应"}`);
+                if (retryCount < 1) {
+                    console.log("[Emby保号] ℹ️ 1秒后将重新执行完整读取流程...");
+                    setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
+                    return;
+                }
+                console.log("[Emby保号] ⚠️ 重试耗尽，使用空数据");
                 callback({});
                 return;
             }
@@ -116,7 +131,7 @@ const readHeartbeatFromCloud = (callback) => {
     });
 };
 
-const writeHeartbeatToCloud = (data, existingGistId, callback) => {
+const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) => {
     const body = JSON.stringify({
         description: GIST.gistDescription,
         public: false,
@@ -141,9 +156,17 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
         },
         body: body
     }, (err, resp, responseData) => {
+        // 写入失败拦截与重试
         if (err) {
-            console.log(`[Emby保号] ❌ 云端写入失败: ${err}`);
-            $notification.post("Emby 保号", "❌ 上传失败", `无法同步到 Gist\n${err}`);
+            console.log(`[Emby保号] ❌ 云端写入失败 (第 ${retryCount + 1} 次尝试): ${err}`);
+            if (retryCount < 1) {
+                console.log("[Emby保号] ℹ️ 1秒后将进行重试写入...");
+                setTimeout(() => writeHeartbeatToCloud(data, existingGistId, callback, retryCount + 1), 1000);
+                return;
+            }
+            
+            console.log("[Emby保号] ❌ 连续写入失败，放弃重试");
+            $notification.post("Emby 保号", "❌ 上传失败", `连续失败2次，无法同步到 Gist\n${err}`);
             if (callback) callback(false);
             return;
         }
@@ -161,7 +184,6 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
 };
 
 // ========== 主逻辑 ==========
-// 使用 IIFE 包裹，避免顶层 return 问题
 (() => {
     // 检查必要参数
     if (!GIST.baseUrl || !GIST.ownerToken) {
@@ -217,7 +239,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback) => {
         
         if (matched) {
             writeHeartbeatToCloud(data, existingGistId, (success) => {
-                if (!success) console.log("[Emby保号] ⚠️ 云端写入失败");
+                if (!success) console.log("[Emby保号] ⚠️ 云端最终写入失败");
                 $done({});
             });
         } else {
