@@ -1,5 +1,6 @@
 /**
  * Emby 保号 - 定时巡检 (Gist 云端版)
+ * 新增：网络请求失败自动重试机制（最大重试1次，延迟1秒）
  */
 
 // ========== 从 $argument 解析配置 ==========
@@ -17,8 +18,8 @@ const GIST = {
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
 
-// ========== Gist 读取 ==========
-const readHeartbeatFromCloud = (callback) => {
+// ========== Gist 读取 (附带重试逻辑) ==========
+const readHeartbeatFromCloud = (callback, retryCount = 0) => {
     $httpClient.get({
         url: `${GIST.baseUrl}/gists`,
         headers: {
@@ -26,8 +27,15 @@ const readHeartbeatFromCloud = (callback) => {
             "Accept": "application/json"
         }
     }, (err, resp, listData) => {
+        // 第一步：请求列表失败拦截
         if (err || !listData) {
-            callback(null, "读取 Gist 列表失败: " + (err || "无响应"));
+            console.log(`读取 Gist 列表失败 (第 ${retryCount + 1} 次尝试): ${err || "无响应"}`);
+            if (retryCount < 1) {
+                console.log("1秒后将进行重试...");
+                setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
+                return;
+            }
+            callback(null, `已连续失败2次，读取 Gist 列表失败: ${err || "无响应"}`);
             return;
         }
         
@@ -52,8 +60,15 @@ const readHeartbeatFromCloud = (callback) => {
                 "Accept": "application/json"
             }
         }, (err2, resp2, detailData) => {
+            // 第二步：请求详情失败拦截
             if (err2 || !detailData) {
-                callback(null, "读取 Gist 详情失败: " + (err2 || "无响应"));
+                console.log(`读取 Gist 详情失败 (第 ${retryCount + 1} 次尝试): ${err2 || "无响应"}`);
+                if (retryCount < 1) {
+                    console.log("1秒后将进行重试...");
+                    setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
+                    return;
+                }
+                callback(null, `已连续失败2次，读取 Gist 详情失败: ${err2 || "无响应"}`);
                 return;
             }
             
