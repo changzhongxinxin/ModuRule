@@ -4,6 +4,7 @@
  * 存储: Gist 云端 Gist（JSON）
  * Gist 配置: 从 $argument 传入
  * 新增：读取和写入均支持网络请求失败自动重试机制（最大重试1次，延迟1秒），并输出详细日志
+ * 修复：每次触发时，同步更新配置中的最新“天数 (days)”，而不仅仅更新时间。
  */
 
 // ========== 从 $argument 解析 Gist 配置 ==========
@@ -230,9 +231,10 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
                     console.log(`[Emby保号] 新服初始化: ${name}, days=${cfg.days}`);
                 } else {
                     data[name].lastBeat = dateStr;
+                    data[name].days = cfg.days; // <---- 修复点：这里也同步更新最新的天数
                 }
                 matched = true;
-                console.log(`[Emby保号] ✅ ${name} → ${dateStr}`);
+                console.log(`[Emby保号] ✅ ${name} → ${dateStr} (天数更新为: ${cfg.days})`);
                 break;
             }
         }
