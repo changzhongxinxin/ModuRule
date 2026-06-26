@@ -234,7 +234,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
                     data[name].days = cfg.days; // <---- 修复点：这里也同步更新最新的天数
                 }
                 matched = true;
-                console.log(`[Emby保号] ✅ ${name} → ${dateStr} (天数更新为: ${cfg.days})`);
+                console.log(`[Emby保号] ✅ ${name} → ${dateStr}`);
                 break;
             }
         }
