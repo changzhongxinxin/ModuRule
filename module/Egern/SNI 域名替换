@@ -1,36 +1,32 @@
-name: SNI 域名替换(Egern版)
-description: 将域名重写到指定目标域名，绕过 SNI 阻断
+name: "SNI 域名替换(Egern版)"
+description: "将域名重写到指定目标域名，绕过 SNI 阻断"
 compat_arguments:
-  RuleBlock: DIRECT
-  domain: 789828.xyz
+  RuleBlock: true
+  domain: "789828.xyz"
 compat_arguments_schema:
   RuleBlock:
-    name: '播放进度上报'
-    description: '播放进度规则'
-    default_value: DIRECT
+    name: "允许播放进度上报"
+    description: "允许播放进度规则"
+    default_value: true
     options:
-      - DIRECT
-      - REJECT
+    - true
+    - false
   domain:
     name: "域名"
-    description: '要替换的域名'
+    description: "要替换的域名"
     default_value: "789828.xyz"
-icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
-dns:
-  hosts:
-    1emby.com:
-    - emby.{domain}
+icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png"
 rules:
 - url_regex:
-    name: 拦截数据上报
-    match: /Sessions/Playing(/Progress|/Stopped)?
-    policy: "{RuleBlock}"
-    disabled: true
+    name: "拦截数据上报"
+    match: "/Sessions/Playing(/Progress|/Stopped)?"
+    policy: "REJECT-DROP"
+    disabled: {{{RuleBlock}}}
 url_rewrites:
-- match: ^https?://(emby|proxy)\.com
-  location: https://$1.{domain}
+- match: "^https?://(emby|proxy)\\.com"
+  location: "https://$1.{{{domain}}}"
 mitm:
   hostnames:
     includes:
-    - emby.com
-    - proxy.com
+    - "emby.com"
+    - "proxy.com"
