@@ -5,6 +5,7 @@
  * Gist 配置: 从 $argument 传入
  * 新增：读取和写入均支持网络请求失败自动重试机制（最大重试1次，延迟1秒），并输出详细日志
  * 修复：每次触发时，同步更新配置中的最新“天数 (days)”，而不仅仅更新时间。
+ * 新增：自动清理云端存在但本地模板已删除的失效服数据。
  */
 
 // ========== 从 $argument 解析 Gist 配置 ==========
@@ -223,6 +224,17 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
         const dateStr = getDateStr();
         let matched = false;
         
+        // --- 新增：清理模板里已经删除的服 ---
+        let hasDeleted = false;
+        for (const cloudServerName in data) {
+            if (!servers.hasOwnProperty(cloudServerName)) {
+                console.log(`[Emby保号] 🗑️ 模板中未找到 ${cloudServerName}，正在从云端数据中移除`);
+                delete data[cloudServerName];
+                hasDeleted = true;
+            }
+        }
+        
+        // --- 原有：更新/新增服信息 ---
         for (const [name, cfg] of Object.entries(servers)) {
             const hit = cfg.patterns.some(p => url.includes(p) || host.includes(p));
             if (hit) {
@@ -231,15 +243,16 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
                     console.log(`[Emby保号] 新服初始化: ${name}, days=${cfg.days}`);
                 } else {
                     data[name].lastBeat = dateStr;
-                    data[name].days = cfg.days; // <---- 修复点：这里也同步更新最新的天数
+                    data[name].days = cfg.days; // 这里也同步更新最新的天数
                 }
                 matched = true;
                 console.log(`[Emby保号] ✅ ${name} → ${dateStr}`);
-                break;
+                break; // 只匹配第一个命中的服
             }
         }
         
-        if (matched) {
+        // 如果命中更新了，或者清理了过期节点，就触发云端写入
+        if (matched || hasDeleted) {
             writeHeartbeatToCloud(data, existingGistId, (success) => {
                 if (!success) console.log("[Emby保号] ⚠️ 云端最终写入失败");
                 $done({});
