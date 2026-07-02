@@ -18,6 +18,12 @@ scriptings:
 - generic:
     name: 小组件
     script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/小组件/天气流量日历
+- generic:
+    name: 黄历
+    script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/HL.js
+- generic:
+    name: 网络雷达
+    script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/Network-Pro.js
 widgets:
 - name: 联通流量
   script_name: 小组件
