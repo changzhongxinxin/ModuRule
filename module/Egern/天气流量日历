@@ -1,32 +1,24 @@
-name: "SNI 域名替换(Egern版)"
-description: "将域名重写到指定目标域名，绕过 SNI 阻断"
-compat_arguments:
-  RuleBlock: true
-  domain: "789828.xyz"
-compat_arguments_schema:
-  RuleBlock:
-    name: "允许播放进度上报"
-    description: "允许播放进度规则"
-    default_value: true
-    options:
-    - true
-    - false
-  domain:
-    name: "域名"
-    description: "要替换的域名"
-    default_value: "789828.xyz"
+name: "天气流量日历"
+description: "天气流量日历小组件"
+env_schema:
+  QW_HOST:
+	name:项目地址
+	description:创建的项目地址
+  QW_KEY:
+	name:令牌
+	description:和风天气申请API令牌
 icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png"
-rules:
-- url_regex:
-    name: "拦截数据上报"
-    match: "/Sessions/Playing(/Progress|/Stopped)?"
-    policy: "REJECT-DROP"
-    disabled: {{{RuleBlock}}}
-url_rewrites:
-- match: "^https?://(emby|proxy)\\.com"
-  location: "https://$1.{{{domain}}}"
+scriptings:
+- http_request:
+    name: 和风
+    match: weatherkit\.apple\.com\/api\/v\d+\/weather\/[^/]+\/(-?\d+\.?\d*)\/(-?\d+\.?\d*)
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/小组件/更新经纬度
+    body_required: false
+    binary_body: false
+- generic:
+    name: 小组件
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/小组件/天气流量日历
 mitm:
   hostnames:
     includes:
-    - "emby.com"
-    - "proxy.com"
+    - weatherkit.apple.com
