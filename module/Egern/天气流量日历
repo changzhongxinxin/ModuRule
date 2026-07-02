@@ -21,6 +21,10 @@ scriptings:
 widgets:
 - name: 联通流量
   script_name: 小组件
+- name: 网络雷达
+  script_name: 网络雷达
+- name: 黄历
+  script_name: 黄历
 mitm:
   hostnames:
     includes:
