@@ -18,6 +18,9 @@ scriptings:
 - generic:
     name: 小组件
     script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/小组件/天气流量日历
+widgets:
+- name: 联通流量
+  script_name: 小组件
 mitm:
   hostnames:
     includes:
