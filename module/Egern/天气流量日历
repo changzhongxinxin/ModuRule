@@ -7,7 +7,7 @@ env_schema:
   QW_KEY:
 	name:令牌
 	description:和风天气申请API令牌
-icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png"
+icon: "https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_Weather.png"
 scriptings:
 - http_request:
     name: 和风
