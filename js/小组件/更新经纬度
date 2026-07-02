@@ -1,0 +1,109 @@
+// ========== 顶部配置变量 ==========
+const CONFIG = {
+    PERSIST_KEY: 'weather_location',
+    DISTANCE_KM: 1,
+};
+
+// ========== 主逻辑 ==========
+export default async function (ctx) {
+    const QW_KEY = (ctx.env && ctx.env.QW_KEY) ? ctx.env.QW_KEY : '';
+    const QW_HOST = (ctx.env && ctx.env.QW_HOST) ? ctx.env.QW_HOST : 'geoapi.qweather.com';
+    
+    console.log(`[配置] QW_KEY: ${QW_KEY ? '已设置' : '未设置'}, QW_HOST: ${QW_HOST}`);
+
+    const url = $request.url;
+    const match = url.match(/weatherkit\.apple\.com\/api\/v\d+\/weather\/[^/]+\/(-?\d+\.?\d*)\/(-?\d+\.?\d*)/);
+
+    if (!match) {
+        console.log(`[跳过] URL 不匹配: ${url.substring(0, 60)}...`);
+        $done({});
+        return;
+    }
+
+    const lat = parseFloat(match[1]);
+    const lon = parseFloat(match[2]);
+    console.log(`[提取] WeatherKit: lat=${lat}, lon=${lon}`);
+
+    let shouldUpdate = true;
+    const cachedStr = $persistentStore.read(CONFIG.PERSIST_KEY);
+
+    if (cachedStr) {
+        try {
+            const cached = JSON.parse(cachedStr);
+            if (cached.lat !== undefined && cached.lon !== undefined) {
+                const distM = calculateDistance(lat, lon, parseFloat(cached.lat), parseFloat(cached.lon));
+                const distKm = distM / 1000;
+                console.log(`[比对] 缓存: ${cached.lat},${cached.lon} | 当前: ${lat},${lon} | 距离: ${distKm.toFixed(2)}km`);
+                if (distKm < CONFIG.DISTANCE_KM) {
+                    console.log(`[跳过] 距离 ${distKm.toFixed(2)}km < 阈值 ${CONFIG.DISTANCE_KM}km`);
+                    shouldUpdate = false;
+                } else {
+                    console.log(`[触发] 距离 ${distKm.toFixed(2)}km >= 阈值 ${CONFIG.DISTANCE_KM}km`);
+                }
+            }
+        } catch (e) {
+            console.log(`[触发] 缓存解析失败，准备更新`);
+        }
+    } else {
+        console.log(`[触发] 无缓存，首次存储`);
+    }
+
+    if (!shouldUpdate) {
+        $done({});
+        return;
+    }
+
+    if (!QW_KEY) {
+        console.log(`[错误] QW_KEY 未设置，仅存储经纬度`);
+        const data = { lat, lon };
+        $persistentStore.write(JSON.stringify(data, null, 2), CONFIG.PERSIST_KEY);
+        $done({});
+        return;
+    }
+
+    const apiUrl = `https://${QW_HOST}/geo/v2/city/lookup?location=${lon},${lat}&key=${QW_KEY}`;
+    console.log(`[请求] 和风反查: ${apiUrl}`);
+
+    try {
+        // 和你另一个脚本保持完全一致：ctx.http.get + .then(r => r.json())
+        const geo = await ctx.http.get(apiUrl).then(r => r.json());
+        
+        
+        let data = { lat, lon };
+
+        if (geo.code === '200' && geo.location && geo.location.length > 0) {
+            const city = geo.location[0];
+            data.country = city.country || '';
+            data.province = city.adm1 || '';
+            data.city = city.name || '';
+            data.district = city.adm2 || '';
+            data.cityId = city.id || '';
+            console.log(`[成功] 反查结果: ${data.province} ${data.city} ${data.district}`);
+        } else {
+            console.log(`[警告] 和风返回异常: code=${geo.code || 'unknown'}`);
+        }
+
+        const jsonStr = JSON.stringify(data, null, 2);
+        $persistentStore.write(jsonStr, CONFIG.PERSIST_KEY);
+        console.log(`[存储] 已写入:\n${jsonStr}`);
+    } catch (e) {
+        console.log(`[异常] 请求失败: ${e.message}`);
+        const data = { lat, lon };
+        $persistentStore.write(JSON.stringify(data, null, 2), CONFIG.PERSIST_KEY);
+        console.log(`[存储] 失败兜底，仅写入经纬度:\n${JSON.stringify(data, null, 2)}`);
+    }
+
+    $done({});
+}
+
+// ========== Haversine 距离计算（返回米）==========
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
