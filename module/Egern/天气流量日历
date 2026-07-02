@@ -1,12 +1,12 @@
 name: "天气流量日历"
 description: "天气流量日历小组件"
 env_schema:
-	QW_HOST:
-		name:项目地址
-		description:创建的项目地址
-	QW_KEY:
-		name:令牌
-		description:和风天气申请API令牌
+  QW_HOST:
+    name: 项目地址
+    description: 创建的项目地址
+  QW_KEY:
+    name: 令牌
+    description: 和风天气申请API令牌
 icon: "https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_Weather.png"
 scriptings:
 - http_request:
