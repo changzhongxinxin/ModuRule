@@ -1,7 +1,7 @@
 // ========== 顶部配置变量 ==========
 const CONFIG = {
     PERSIST_KEY: 'weather_location',
-    DISTANCE_KM: 5,
+    DISTANCE_KM: 10,
 };
 
 // ========== 主逻辑 ==========
