@@ -1,0 +1,21 @@
+name: Telegram 跳转第三方
+description: Telegram外部链接跳转第三方
+icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram.png
+compat_arguments:
+  url_scheme: 'sg'
+compat_arguments_schema:
+  url_scheme:
+    name: 打开的客户端
+    description: 第三方客户端
+    options:
+    - "sg"
+    - "turrit"
+    - "tg"
+url_rewrites:
+- match: (https:\/\/)?t\.me\/(.+)
+  location: "{{{url_scheme}}}://resolve?domain=$2"
+  status_code: 302
+mitm:
+  hostnames:
+    includes:
+    - t.me
