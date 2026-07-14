@@ -31,8 +31,7 @@ const DEFAULT_CONFIG_TEXT =
 桃子|embymv.link,peach|12
 麻衣|miraiemby,mirai|20
 飞跃彩虹|feiyue.lol,fych|55
-SNTP|cn2gias,sntp|28
-Lunaris Vault|lunarisvault|85`;
+SNTP|cn2gias,sntp|28`;
 
 const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
