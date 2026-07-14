@@ -12,4 +12,4 @@
 播放停止触发 = type=http-response,pattern=^https?:\/\/[^\/]+\/.*(Stopped|Playing\/Stop|ReportPlaybackStopped|Playback\/Stop),requires-body=0,timeout=30,script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/保号/触发-云端同步.js,script-update-interval=0,argument=gistUrl={{{Gist地址}}}&Token={{{Gist密码}}}&gistDescriptionription={{{Gist描述}}}&gistFilenamename={{{文件名}}}
 
 [MITM]
-hostname = %INSERT% *.feiyue.lol,*.miraiemby.com,embymv.link,*lunarisvault.com,lite.cn2gias.uk
+hostname = %INSERT% *.feiyue.lol,*.miraiemby.com,embymv.link,lite.cn2gias.uk
