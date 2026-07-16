@@ -7,5 +7,6 @@ if (url.includes("uhd") && method === "POST") {
     $done({ response: { status: 200, body: "{}" } });
 } else {
     // 其它所有域名（其他服），或者非 POST 请求（如 DELETE），一律放行
+		console.log("放行");
     $done({});
 }
