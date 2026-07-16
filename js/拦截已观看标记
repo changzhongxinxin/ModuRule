@@ -1,9 +1,11 @@
 const method = $request.method;
+const url = $request.url;
 
-// 如果是 POST（标记已看），直接拦截并返回 200 OK，不发给服务器
-if (method === "POST") {
+// 只有域名包含 v1.uhdnow.com，且请求方法是 POST 时，才进行拦截
+if (url.includes("uhd") && method === "POST") {
+		console.log("拦截已观看");
     $done({ response: { status: 200, body: "{}" } });
 } else {
-    // 如果是 DELETE（取消已看）或其他，直接放行，正常发送给服务器
+    // 其它所有域名（其他服），或者非 POST 请求（如 DELETE），一律放行
     $done({});
 }
