@@ -13,7 +13,7 @@ AND,((OR,((DOMAIN-SUFFIX,uhdnow.com), (DOMAIN-SUFFIX,789828.xyz), (DOMAIN,emby.c
 
 
 [Script]
-http-request ^https?://.*/Users/.*/PlayedItems script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/拦截已观看标记, timeout=10
+http-request ^https?://.*/Users/.*/PlayedItems script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/拦截已观看标记, timeout=10, tag=拦截已观看
 
 [Rewrite]
 #(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)? reject-200
