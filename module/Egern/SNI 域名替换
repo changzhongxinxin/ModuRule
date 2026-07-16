@@ -19,7 +19,7 @@ icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 rules:
 - url_regex:
     name: "拦截数据上报"
-    match: "/Sessions/Playing(/Progress|/Stopped)?"
+    match: ".*/(Sessions/Playing(?:/Progress|/Stopped)?|Users/.*/PlayedItems)"
     policy: "REJECT-DROP"
     disabled: {{{RuleBlock}}}
 url_rewrites:
