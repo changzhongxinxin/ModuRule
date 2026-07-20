@@ -144,10 +144,10 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             const diffDays = Math.floor((today - lastDate) / 86400000);
             
             if (diffDays > days) {
-                alerts.push(`🚨 ${name}\n   已 ${diffDays} 天未活跃（限 ${days} 天）\n   最后: ${lastStr}`);
+                alerts.push(`🚨 ${name}\n   已 ${diffDays} 天未活跃（限 ${days} 天）\n   最后观看: ${lastStr}`);
             } else {
                 const remain = days - diffDays;
-                normal.push(`✅ ${name}: 剩 ${remain} 天 (最后${lastStr})`);
+                normal.push(`✅ ${name}: 剩 ${remain} 天 (最后观看${lastStr})`);
             }
         }
         
