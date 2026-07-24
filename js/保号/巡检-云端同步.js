@@ -1,6 +1,7 @@
 /**
  * Emby 保号 - 定时巡检 (Gist 云端版)
  * 新增：网络请求失败自动重试机制（最大重试1次，延迟1秒）
+ * 新增：提前预警天数配置（默认3天）
  */
 
 // ========== 从 $argument 解析配置 ==========
@@ -17,6 +18,9 @@ const GIST = {
     gistDescription: arg.gistDescription || "Emby Keepalive Data",
     gistFilename: arg.gistFilename || "emby_keepalive_data.json"
 };
+
+// ========== 新增：提前预警天数 ==========
+const ALERT_AHEAD_DAYS = parseInt(arg.day, 10) || 3;
 
 // ========== Gist 读取 (附带重试逻辑) ==========
 const readHeartbeatFromCloud = (callback, retryCount = 0) => {
@@ -143,11 +147,19 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             const lastDate = new Date(y, m - 1, d);
             const diffDays = Math.floor((today - lastDate) / 86400000);
             
-            if (diffDays > days) {
-                alerts.push(`🚨 ${name}\n   已 ${diffDays} 天未活跃（限 ${days} 天）\n   最后观看时间: ${lastStr}`);
+            // ========== 修改：提前预警逻辑 ==========
+            // 当剩余天数 <= 提前预警天数 时触发通知
+            const remainDays = days - diffDays;
+            
+            if (remainDays <= 0) {
+                // 已超期
+                alerts.push(`🚨 ${name}\n   已超期 ${Math.abs(remainDays)} 天（限 ${days} 天）\n   最后观看时间: ${lastStr}`);
+            } else if (remainDays <= ALERT_AHEAD_DAYS) {
+                // 即将到期（在预警范围内）
+                alerts.push(`⚠️ ${name}\n   仅剩 ${remainDays} 天即将到期（限 ${days} 天）\n   最后观看时间: ${lastStr}`);
             } else {
-                const remain = days - diffDays;
-                normal.push(`✅ ${name}: 剩 ${remain} 天 (${lastStr})`);
+                // 正常
+                normal.push(`✅ ${name}: 剩 ${remainDays} 天 (${lastStr})`);
             }
         }
         
