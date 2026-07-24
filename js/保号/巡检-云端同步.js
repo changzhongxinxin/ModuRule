@@ -163,16 +163,33 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             }
         }
         
-        if (alerts.length > 0) {
+                if (alerts.length > 0) {
             $notification.post(
                 "🚨 Emby 保号提醒",
                 `${alerts.length} 个账号需关注`,
                 alerts.join("\n\n") + (normal.length ? "\n\n———\n" + normal.join("\n") : "")
             );
-        } else {
-            console.log("[Emby巡检] 全部正常\n" + normal.join("\n"));
+        }
+
+        // 始终打印日志（不管有没有通知）
+        const logLines = [];
+        if (alerts.length > 0) {
+            logLines.push("【需关注】");
+            logLines.push(alerts.join("\n"));
+        }
+        if (normal.length > 0) {
+            if (alerts.length > 0) logLines.push(""); // 有空行分隔
+            logLines.push("【正常】");
+            logLines.push(normal.join("\n"));
         }
         
+        const statusText = alerts.length 
+            ? `⚠️ ${alerts.length}个需关注 / ${normal.length}个正常` 
+            : "✅ 全部正常";
+            
+        console.log(`[Emby巡检] ${statusText}\n${logLines.join("\n")}`);
+        
         $done();
+
     });
 })();
