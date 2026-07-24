@@ -28,10 +28,10 @@ const GIST = {
 // ========== 本地配置（写死，不再读取持久化）==========
 const DEFAULT_CONFIG_TEXT = 
 `# Emby保号配置格式: 服名|线路关键词1,关键词2|天数
-桃子|embymv.link,peach|12
-麻衣|miraiemby,mirai|20
-飞跃彩虹|feiyue.lol,fych|55
-SNTP|cn2gias,sntp|28`;
+桃子|embymv.link,peach|14
+麻衣|miraiemby,mirai|23
+飞跃彩虹|feiyue.lol,fych|60
+SNTP|cn2gias,sntp|30`;
 
 const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
