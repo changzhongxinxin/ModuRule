@@ -77,28 +77,29 @@ export default async function(ctx) {
         return JSON.parse(fileObj.content);
     }
 
+    // 自适应颜色：浅色/深色模式自动切换
     const C = {
-        bg: "#0F0F12",
-        cardAlert: "#2A1515",
-        cardNormal: "#15201A",
-        cardOrange: "#2A1F10",
-        cardLightGreen: "#15201A",
-        textPrimary: "#FFFFFF",
-        textSecondary: "#8E8E93",
-        textTertiary: "#636366",
+        bg: { light: "#FFFFFF", dark: "#0F0F12" },
+        cardAlert: { light: "#FEE2E2", dark: "#2A1515" },
+        cardNormal: { light: "#E8F5E9", dark: "#15201A" },
+        cardOrange: { light: "#FFF3E0", dark: "#2A1F10" },
+        cardLightGreen: { light: "#E8F5E9", dark: "#15201A" },
+        textPrimary: { light: "#000000", dark: "#FFFFFF" },
+        textSecondary: { light: "#6C6C70", dark: "#8E8E93" },
+        textTertiary: { light: "#8E8E93", dark: "#636366" },
         alert: "#FF453A",
         alertBg: "#FF453A18",
         orange: "#FF9F0A",
         orangeBg: "#FF9F0A18",
-        lightGreen: "#64D28A",
-        lightGreenBg: "#64D28A18",
-        normal: "#30D158",
-        normalBg: "#30D15818",
+        lightGreen: "#34C759",
+        lightGreenBg: "#34C75918",
+        normal: "#34C759",
+        normalBg: "#34C75918",
         warning: "#FF9F0A",
         borderAlert: "#FF453A30",
         borderOrange: "#FF9F0A30",
-        borderLightGreen: "#64D28A30",
-        borderNormal: "#30D15830"
+        borderLightGreen: "#34C75930",
+        borderNormal: "#34C75930"
     };
 
     function getDayStyle(remain) {
@@ -204,7 +205,6 @@ export default async function(ctx) {
         const ds = getDayStyle(remain);
         const timeStr = formatTime(item.lastStr);
 
-        // 名称 + 提醒天数 整体作为一个元素（紧挨着）
         const nameWithDays = {
             type: "stack",
             direction: "row",
@@ -229,7 +229,6 @@ export default async function(ctx) {
             ]
         };
 
-        // 第一行：点 + (名称/提醒天数整体) + 剩余天数标签
         const firstRow = {
             type: "stack",
             direction: "row",
@@ -262,7 +261,6 @@ export default async function(ctx) {
             ]
         };
 
-        // 第二行：完整时间
         const secondRow = {
             type: "text",
             text: timeStr,
@@ -295,7 +293,6 @@ export default async function(ctx) {
 
         const children = [];
 
-        // ===== 顶部标题栏 =====
         const titleIcon = hasAlert ? "sf-symbol:exclamationmark.triangle.fill" : "sf-symbol:checkmark.shield.fill";
         const titleColor = hasAlert ? C.alert : C.normal;
 
@@ -328,7 +325,6 @@ export default async function(ctx) {
             ]
         });
 
-        // ===== 小尺寸：极简显示 =====
         if (isSmall) {
             if (hasAlert) {
                 children.push({
@@ -356,7 +352,6 @@ export default async function(ctx) {
             };
         }
 
-        // ===== 中/大尺寸：卡片式 2列布局 =====
         const allCards = [];
 
         for (const alert of alerts) {
@@ -400,7 +395,6 @@ export default async function(ctx) {
         };
     }
 
-    // ========== 主逻辑 ==========
     try {
         const data = await readHeartbeatFromCloud();
 
