@@ -18,19 +18,9 @@ scriptings:
 - generic:
     name: 天气流量日历
     script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/js/小组件/天气流量日历
-- generic:
-    name: 黄历
-    script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/HL.js
-- generic:
-    name: 网络雷达
-    script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/Network-Pro.js
 widgets:
 - name: 天气流量日历
   script_name: 天气流量日历
-- name: 网络雷达
-  script_name: 网络雷达
-- name: 黄历
-  script_name: 黄历
 mitm:
   hostnames:
     includes:
