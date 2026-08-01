@@ -8,7 +8,7 @@
 #emby.com = emby.789828.xyz
 
 [Rewrite]
-^https?://(emby)\.com header https://$1.789828.xyz
+^https?://(emby|uhd)\.com header https://$1.789828.xyz
 
 
 

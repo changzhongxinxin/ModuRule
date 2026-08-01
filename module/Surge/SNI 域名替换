@@ -5,7 +5,7 @@
 #!arguments=domain:789828.xyz
 
 [URL Rewrite]
-^https?://(emby)\.com https://$1.{{{domain}}} header
+^https?://(emby|uhd)\.com https://$1.{{{domain}}} header
 
 [Host]
 #emby.com = emby.{{{domain}}}

@@ -23,7 +23,7 @@ rules:
     policy: "REJECT-DROP"
     disabled: {{{RuleBlock}}}
 url_rewrites:
-- match: "^https?://(emby|proxy)\\.com"
+- match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
 mitm:
   hostnames:
