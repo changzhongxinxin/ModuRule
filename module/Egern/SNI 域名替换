@@ -29,4 +29,4 @@ mitm:
   hostnames:
     includes:
     - "emby.com"
-    - "proxy.com"
+    - "uhd.com"

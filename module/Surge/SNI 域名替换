@@ -11,4 +11,4 @@
 #emby.com = emby.{{{domain}}}
 
 [MITM]
-hostname = %INSERT% emby.com
+hostname = %INSERT% emby.com,uhd.com
