@@ -4,7 +4,7 @@ icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 compat_arguments:
   RuleBlock: true
   domain: "789828.xyz"
-  status: "header"
+  status: ""
 compat_arguments_schema:
   RuleBlock:
     name: "允许播放进度上报"
@@ -21,7 +21,7 @@ compat_arguments_schema:
     name: "状态码"
     description: "重写状态码"
     options:
-    - "header"
+    - ""
     - "302"
     - "307"
 rules:
@@ -33,7 +33,7 @@ rules:
 url_rewrites:
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
-  status_code: 307
+  status_code: {{{status}}}
 mitm:
   hostnames:
     includes:
