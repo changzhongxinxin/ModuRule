@@ -33,7 +33,7 @@ rules:
 url_rewrites:
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
-  status_code: {{{status}}}
+  status_code: 307
 mitm:
   hostnames:
     includes:
