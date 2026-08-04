@@ -30,5 +30,3 @@ mitm:
     includes:
     - "emby.com"
     - "uhd.com"
-    - "*.789828.xyz"
-    - "*.bb.cc.cd"
