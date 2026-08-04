@@ -4,7 +4,6 @@ icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 compat_arguments:
   RuleBlock: true
   domain: "789828.xyz"
-  status: ""
 compat_arguments_schema:
   RuleBlock:
     name: "允许播放进度上报"
@@ -17,13 +16,6 @@ compat_arguments_schema:
     name: "域名"
     description: "要替换的域名"
     default_value: "789828.xyz"
-  status:
-    name: "状态码"
-    description: "重写状态码"
-    options:
-    - ""
-    - "302"
-    - "307"
 rules:
 - url_regex:
     name: "拦截数据上报"
@@ -33,7 +25,6 @@ rules:
 url_rewrites:
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
-  status_code: {{{status}}}
 mitm:
   hostnames:
     includes:
