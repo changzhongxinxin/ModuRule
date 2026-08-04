@@ -13,5 +13,5 @@
 
 
 [MITM]
-hostname = emby.com,uhd.com
+hostname = emby.com,uhd.com,*.789828.xyx,*.bb.cc.cd
 
