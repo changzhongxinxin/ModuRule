@@ -1,8 +1,10 @@
 name: "SNI 域名替换(Egern版)"
 description: "将域名重写到指定目标域名，绕过 SNI 阻断"
+icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png"
 compat_arguments:
   RuleBlock: true
   domain: "789828.xyz"
+  status: "header"
 compat_arguments_schema:
   RuleBlock:
     name: "允许播放进度上报"
@@ -15,7 +17,13 @@ compat_arguments_schema:
     name: "域名"
     description: "要替换的域名"
     default_value: "789828.xyz"
-icon: "https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png"
+  status:
+    name: "状态码"
+    description: "重写状态码"
+    options:
+    - "header"
+    - "302"
+    - "307"
 rules:
 - url_regex:
     name: "拦截数据上报"
@@ -25,8 +33,11 @@ rules:
 url_rewrites:
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
+  status_code: {{{status}}}
 mitm:
   hostnames:
     includes:
     - "emby.com"
     - "uhd.com"
+    - "*.789828.xyz"
+    - "*.bb.cc.cd"
