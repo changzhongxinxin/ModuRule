@@ -1,0 +1,17 @@
+#!name=SNI 域名替换(Loon版)
+#!desc=将域名重写到指定目标域名，绕过 SNI 阻断
+#!icon=https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
+#!tag=工具
+
+
+[Host]
+#emby.com = emby.789828.xyz
+
+[Rewrite]
+^https?://(emby|uhd)\.com 307 https://$1.789828.xyz
+
+
+
+[MITM]
+hostname = emby.com,uhd.com,*.789828.xyx,*.bb.cc.cd
+

@@ -1,0 +1,22 @@
+#!name=Emby上报拦截
+#!desc=拦截部分Emby进度上报
+#!tag = 工具
+#!icon=https://raw.githubusercontent.com/ginibond/ginibond/main/Icons/Forward/Nsfw_emby_qiumingshanjuezhan1.png
+
+[Rule]
+
+#URL-REGEX,(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)?,REJECT-DROP
+
+
+AND,((OR,((DOMAIN-SUFFIX,bb.cc.cd),(DOMAIN,uhd.com),(DOMAIN-SUFFIX,uhdnow.com),(DOMAIN-SUFFIX,789828.xyz),(DOMAIN,emby.com))),(URL-REGEX,"uhd"),(OR,((URL-REGEX,"/Sessions/Playing(/Progress|/Stopped)?"),(URL-REGEX,"/System/Ext/ServerDomains")))),REJECT-DROP
+
+
+
+[Script]
+http-request ^https?://.*/Users/.*/PlayedItems script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/拦截已观看标记.js, timeout=10, tag=拦截已观看
+
+[Rewrite]
+#(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)? reject-200
+
+[MITM]
+hostname = *.uhdnow.com

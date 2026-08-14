@@ -1,0 +1,12 @@
+const method = $request.method;
+const url = $request.url;
+
+// 只有域名包含 v1.uhdnow.com，且请求方法是 POST 时，才进行拦截
+if (url.includes("uhd") && method === "POST") {
+		console.log("拦截已观看");
+    $done({ response: { status: 200, body: "{}" } });
+} else {
+    // 其它所有域名（其他服），或者非 POST 请求（如 DELETE），一律放行
+		console.log("放行");
+    $done({});
+}

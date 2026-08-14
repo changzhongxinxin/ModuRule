@@ -1,0 +1,10 @@
+name: "网络雷达"
+description: "网络雷达小组件"
+icon: "https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/SSID.png"
+scriptings:
+- generic:
+    name: 网络雷达
+    script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/Network-Pro.js
+widgets:
+- name: 网络雷达
+  script_name: 网络雷达

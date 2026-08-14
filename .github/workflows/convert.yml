@@ -1,0 +1,42 @@
+name: Convert Surge Lists to Clash YAML
+
+on:
+  push:
+    paths:
+      - 'Rule/List/*'            # 监听 Rule/list 下所有文件变更
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run conversion script
+        run: python .github/scripts/convert.py   # 更新路径
+
+      - name: List generated files (debug)
+        run: |
+          echo "Contents of Rule/Clash directory:"
+          ls -la Rule/Clash/ || echo "Directory Rule/Clash does not exist or is empty"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ls Rule/Clash/*.yaml 1> /dev/null 2>&1; then
+            git add Rule/Clash/*.yaml
+            git diff --staged --quiet || git commit -m "chore: auto-convert rules to Clash YAML"
+            git push
+          else
+            echo "No YAML files found, skipping commit."
+          fi

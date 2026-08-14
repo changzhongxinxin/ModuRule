@@ -1,0 +1,14 @@
+#!name=Forward预加载屏蔽
+#!desc=Forward预加载请求头屏蔽
+#!category=工具
+#!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/fp.png
+
+[Header Rewrite]
+http-request ^https?://(transfer\.)?lunarisvault\.com header-del X-Preload-Bytes
+# 删除指定的请求头 X-DetailPreload
+http-request ^https?://(transfer\.)?lunarisvault\.com header-del X-DetailPreload
+# 替换 User-Agent 并动态保留版本号
+http-request ^https?://(transfer\.)?lunarisvault\.com header-replace-regex User-Agent Forward-DetailPreload/([\d.]+) Forward-Standard/$1
+
+[MITM]
+hostname = %INSERT% *lunarisvault.com

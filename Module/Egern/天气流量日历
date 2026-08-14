@@ -1,0 +1,27 @@
+name: "天气流量日历"
+description: "天气流量日历小组件"
+env_schema:
+  QW_HOST:
+    name: 项目地址
+    description: 创建的项目地址
+  QW_KEY:
+    name: 令牌
+    description: 和风天气申请API令牌
+icon: "https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_Weather.png"
+scriptings:
+- http_request:
+    name: 更新经纬度
+    match: weatherkit\.apple\.com\/api\/v\d+\/weather\/[^/]+\/(-?\d+\.?\d*)\/(-?\d+\.?\d*)
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/天气流量/更新经纬度.js
+    body_required: false
+    binary_body: false
+- generic:
+    name: 天气流量日历
+    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/天气流量/天气流量日历.js
+widgets:
+- name: 天气流量日历
+  script_name: 天气流量日历
+mitm:
+  hostnames:
+    includes:
+    - weatherkit.apple.com

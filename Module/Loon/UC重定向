@@ -1,0 +1,17 @@
+#!name = UC网盘重定向
+#!desc = UC网盘重定向
+#!openUrl = 
+#!author = 
+#!tag = 功能增强
+#!system = 
+#!system_version = 
+#!loon_version = 3.2.6(821)
+#!homepage = 
+#!icon = https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/Swiftgram.png
+#!date = 2025-02-04 17:00
+
+[Rewrite]
+(https:\/\/)?drive\.uc\/(.+) 307 uclink://www.uc.cn?action=open_url&url=$2
+
+[MitM]
+hostname = drive.uc
