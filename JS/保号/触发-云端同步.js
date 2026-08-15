@@ -32,7 +32,7 @@ const DEFAULT_CONFIG_TEXT =
 麻衣|miraiemby,mirai|23
 飞跃|feiyue.lol,fych|60
 非越|sfcj.org,feiyue|30
-SNTP|lite.cn2gias.uk,sntp|30
+守候|lite.cn2gias.uk,sntp|30
 茶服|teawaya,tea|30
 `;
 
