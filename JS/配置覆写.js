@@ -3,9 +3,7 @@ function main(config) {
    * 1. 注入懒人基础网络配置 (修复 proxy-server-nameserver 错误 + DNS 兜底)
    */
   const baseSettings = {
-    "allow-lan": true,          // 如不需要局域网共享，建议改为 false
     "bind-address": "*",
-    "ipv6": false,
     "unified-delay": true,
     "tcp-concurrent": true,
     "find-process-mode": "strict",
