@@ -494,16 +494,6 @@ try {
         const days = Number(info?.days) || 25;
         const lastStr = info?.lastBeat;
 
-        if (!lastStr) {
-            alerts.push({
-                name,
-                diffDays: "从未",
-                days,
-                lastStr: "从未触发"
-            });
-            continue;
-        }
-
         const datePart = lastStr.split(" ")[0];
         const [y, m, d] = datePart.split("-").map(Number);
         const lastDate = new Date(y, m - 1, d);
@@ -517,7 +507,21 @@ try {
         }
     }
 
-    return makeNormalWidget(alerts, normal, servers.length, cmDays);
+    // ========== 新增：最多显示剩余天数最少的 4 个 ==========
+    const allItems = [
+        ...alerts.map(a => ({ ...a, remain: -a.diffDays })),
+        ...normal
+    ];
+    allItems.sort((a, b) => a.remain - b.remain);
+    const top4 = allItems.slice(0, 4);
+
+    const finalAlerts = top4
+        .filter(item => item.remain <= 0)
+        .map(({ remain, ...rest }) => rest);
+    const finalNormal = top4.filter(item => item.remain > 0);
+    // ================================================
+
+    return makeNormalWidget(finalAlerts, finalNormal, servers.length, cmDays);
 
 } catch (err) {
     return makeErrorWidget("云端获取失败", err.message || "未知错误");
