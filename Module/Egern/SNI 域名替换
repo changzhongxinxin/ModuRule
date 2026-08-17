@@ -24,8 +24,8 @@ rules:
     disabled: {{{RuleBlock}}}
 url_rewrites:
 - match: ^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing)
-  location: http://reject-200/
-  status_code: 200
+  location: http://reject/
+  status_code: 307
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
   status_code: 307
