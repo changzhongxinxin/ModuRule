@@ -6,7 +6,7 @@
 
 [URL Rewrite]
 
-^https?://(emby|uhd)\.com https://$1.{{{domain}}} header
+^https?://(emby|uhd)\.com https://$1.{{{domain}}} 307
 
 
 [MITM]

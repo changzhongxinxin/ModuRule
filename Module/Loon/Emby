@@ -12,9 +12,6 @@ AND,((OR,((DOMAIN-SUFFIX,bb.cc.cd),(DOMAIN,uhd.com),(DOMAIN-SUFFIX,uhdnow.com),(
 
 
 
-[Script]
-http-request ^https?://.*/Users/.*/PlayedItems script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/拦截已观看标记.js, timeout=10, tag=拦截已观看
-
 [Rewrite]
 #(uhd|entertang).*/Sessions/Playing(/Progress|/Stopped)? reject-200
 
