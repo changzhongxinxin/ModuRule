@@ -23,6 +23,9 @@ rules:
     policy: "REJECT-DROP"
     disabled: {{{RuleBlock}}}
 url_rewrites:
+- match: ^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing)
+  location: http://reject-200/
+  status_code: 200
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
   status_code: 307
