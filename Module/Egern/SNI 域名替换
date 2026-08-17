@@ -16,13 +16,12 @@ compat_arguments_schema:
     name: "域名"
     description: "要替换的域名"
     default_value: ""
-rules:
-- url_regex:
-    name: "拦截数据上报"
-    match: "/Sessions/Playing(/Progress|/Stopped)?"
-    policy: "REJECT-DROP"
-    disabled: {{{RuleBlock}}}
+
 url_rewrites:
+- match: /Sessions/Playing(/Progress|/Stopped)?
+  location: http://reject-200/
+  status_code: 200
+  disabled: {{{RuleBlock}}}
 - match: ^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing)
   location: http://reject-200/
   status_code: 200
