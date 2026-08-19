@@ -125,6 +125,10 @@ function main(config) {
    * 5. 规则重写 (顺序：拒绝/直连 → 特定应用 → 全局代理 → geo → 兜底)
    */
   config.rules = [
+	//本地规则
+	"DOMAIN-SUFFIX,hills.im,DIRECT",
+	"DOMAIN-SUFFIX,emby.wtf,新加坡",
+	//订阅规则
     "RULE-SET,reject,REJECT",
     "RULE-SET,china,DIRECT",
     "RULE-SET,直连,DIRECT",
