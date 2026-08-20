@@ -7,7 +7,7 @@
 [URL Rewrite]
 ^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing) - reject
 
-^https?://(emby|uhd)\.com https://$1.{{{domain}}} 307
+^https?://(emby|uhd)\.com https://$1.{{{domain}}} header
 
 
 [MITM]
