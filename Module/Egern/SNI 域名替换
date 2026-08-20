@@ -27,7 +27,7 @@ url_rewrites:
   status_code: 200
 - match: "^https?://(emby|uhd)\\.com"
   location: "https://$1.{{{domain}}}"
-  status_code: 307
+#  status_code: 307
 mitm:
   hostnames:
     includes:
