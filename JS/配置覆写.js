@@ -128,6 +128,7 @@ function main(config) {
 	//本地规则
 	"DOMAIN-SUFFIX,hills.im,DIRECT",
 	"DOMAIN-SUFFIX,emby.wtf,新加坡",
+  "DOMAIN-SUFFIX,linux.do,新加坡",
 	//订阅规则
     "RULE-SET,reject,REJECT",
     "RULE-SET,china,DIRECT",
