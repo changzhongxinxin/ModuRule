@@ -125,12 +125,12 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
         }
         
         const servers = Object.keys(data);
-        
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
-        const alerts = [];
-        const normal = [];
+        // 统一收集所有服务器信息，用于排序
+        const allServers = [];
+        let alertCount = 0;
         
         for (const name of servers) {
             const info = data[name];
@@ -138,7 +138,12 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             const lastStr = info?.lastBeat;
             
             if (!lastStr) {
-                alerts.push(`⚠️ ${name}\n   从未触发（请先看一个视频）`);
+                allServers.push({
+                    remainDays: -9999,  // 从未触发的排在最前面
+                    text: `⚠️ ${name}\n   从未触发（请先看一个视频）`,
+                    isAlert: true
+                });
+                alertCount++;
                 continue;
             }
             
@@ -146,50 +151,47 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             const [y, m, d] = datePart.split('-').map(Number);
             const lastDate = new Date(y, m - 1, d);
             const diffDays = Math.floor((today - lastDate) / 86400000);
-            
-            // ========== 修改：提前预警逻辑 ==========
-            // 当剩余天数 <= 提前预警天数 时触发通知
             const remainDays = days - diffDays;
             
+            let text, isAlert;
             if (remainDays <= 0) {
-                // 已超期
-                alerts.push(`🚨 ${name}\n   已超期 ${Math.abs(remainDays)} 天（限 ${days} 天）\n   最后观看时间: ${lastStr}`);
+                text = `🚨 ${name}\n       已超期 ${Math.abs(remainDays)} 天（限 ${days} 天）\n       最后观看时间: ${lastStr}`;
+                isAlert = true;
+                alertCount++;
             } else if (remainDays <= ALERT_AHEAD_DAYS) {
-                // 即将到期（在预警范围内）
-                alerts.push(`⚠️ ${name}\n   仅剩 ${remainDays} 天即将到期（限 ${days} 天）\n   最后观看时间: ${lastStr}`);
+                text = `⚠️ ${name}\n       仅剩 ${remainDays} 天即将到期（限 ${days} 天）\n       最后观看时间: ${lastStr}`;
+                isAlert = true;
+                alertCount++;
             } else {
-                // 正常
-                normal.push(`✅ ${name}: 剩 ${remainDays} 天 (${lastStr})`);
+                text = `✅ ${name}: 剩 ${remainDays} 天 (${lastStr})`;
+                isAlert = false;
             }
+            
+            allServers.push({ remainDays, text, isAlert });
         }
         
-                if (alerts.length > 0) {
+        // 按剩余天数升序排列（最紧急的在前）
+        allServers.sort((a, b) => a.remainDays - b.remainDays);
+        
+        // 分离通知用的 alerts（保持原有通知逻辑）
+        const alerts = allServers.filter(s => s.isAlert).map(s => s.text);
+        const normal = allServers.filter(s => !s.isAlert).map(s => s.text);
+        
+        if (alerts.length > 0) {
             $notification.post(
                 "🚨 Emby 保号提醒",
                 `${alerts.length} 个账号需关注`,
-                alerts.join("\n\n") + (normal.length ? "\n\n———\n" + normal.join("\n") : "")
+                alerts.join("\n") + (normal.length ? "\n———\n" + normal.join("\n") : "")
             );
         }
 
-        // 始终打印日志（不管有没有通知）
-        const logLines = [];
-        if (alerts.length > 0) {
-            logLines.push("【需关注】");
-            logLines.push(alerts.join("\n"));
-        }
-        if (normal.length > 0) {
-            if (alerts.length > 0) logLines.push(""); // 有空行分隔
-            logLines.push("【正常】");
-            logLines.push(normal.join("\n"));
-        }
-        
-        const statusText = alerts.length 
-            ? `⚠️ ${alerts.length}个需关注 / ${normal.length}个正常` 
+        // 打印按剩余天数排序的日志
+        const statusText = alertCount 
+            ? `⚠️ ${alertCount}个需关注 / ${servers.length - alertCount}个正常` 
             : "✅ 全部正常";
             
-        console.log(`[Emby巡检] ${statusText}\n${logLines.join("\n")}`);
+        console.log(`[Emby巡检] ${statusText}\n${allServers.map(s => s.text).join("\n")}`);
         
         $done();
-
     });
 })();
