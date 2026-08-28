@@ -2,16 +2,15 @@
 #!desc=将域名重写到指定目标域名，绕过 SNI 阻断
 #!icon=https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 #!tag=工具
-
+[Argument]
+BaseUrl = input, "", tag=域名后缀
 
 [Host]
 #emby.com = emby.789828.xyz
 
 [Rewrite]
-^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing) reject-200
-^https?://(emby|uhd)\.com 307 https://$1.789828.xyz
-
-
+request if ${url} ~= /^https?:\/\/(emby|uhd)\.com/i as urlMatch then redirect(307, "https://${urlMatch.1}.${BaseUrl}")
+^https?://.*uhd.*/(?:System/Ext/ServerDomains|Sessions/Playing) reject-200
 
 [MITM]
 hostname = emby.com,uhd.com,*.uhdnow.com
