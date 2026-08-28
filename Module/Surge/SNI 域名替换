@@ -5,10 +5,10 @@
 #!arguments=domain:789828.xyz
 
 [URL Rewrite]
-^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing) - reject
+^https?://.*uhd.*/(?:System/Ext/ServerDomains|Sessions/Playing) - reject
 
 ^https?://(emby|uhd)\.com https://$1.{{{domain}}} header
 
 
 [MITM]
-hostname = %INSERT% emby.com,uhd.com
+hostname = %INSERT% emby.com,uhd.com,*.uhdnow.com

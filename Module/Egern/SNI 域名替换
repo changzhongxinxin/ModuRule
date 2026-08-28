@@ -22,7 +22,7 @@ url_rewrites:
   location: http://reject-200/
   status_code: 200
   disabled: {{{RuleBlock}}}
-- match: ^https?://.*uhd.*/.*(?:System/Ext/ServerDomains|emby/Sessions/Playing)
+- match: ^https?://.*uhd.*/(?:System/Ext/ServerDomains|Sessions/Playing)
   location: http://reject-200/
   status_code: 200
 - match: "^https?://(emby|uhd)\\.com"
@@ -33,3 +33,4 @@ mitm:
     includes:
     - "emby.com"
     - "uhd.com"
+    - "*.uhdnow.com"
