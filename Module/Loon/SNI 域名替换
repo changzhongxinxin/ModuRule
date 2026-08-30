@@ -3,7 +3,7 @@
 #!icon=https://raw.githubusercontent.com/xushier/HD-Icons/main/circle/ddns-1.png
 #!tag=工具
 [Argument]
-BaseUrl = input, "", tag=域名后缀
+BaseUrl = input, "", tag=域名后缀,desc=用来替换的域名后缀
 
 [Host]
 #emby.com = emby.789828.xyz

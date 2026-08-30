@@ -67,8 +67,6 @@ function loadCredentials() {
             }));
             if (params.username && !params.username.includes("请填写")) username = params.username;
             if (params.password && !params.password.includes("请填写")) password = params.password;
-            console.log("用户名"+username);
-            console.log("密码"+password);
         } catch (e) {
             console.log("参数解析出错: " + e);
         }

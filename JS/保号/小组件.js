@@ -494,6 +494,12 @@ try {
         const days = Number(info?.days) || 25;
         const lastStr = info?.lastBeat;
 
+        // 心跳缺失按"从未触发"处理，避免 split 抛错导致整个组件渲染失败
+        if (!lastStr) {
+            alerts.push({ name, diffDays: 9999, days, lastStr });
+            continue;
+        }
+
         const datePart = lastStr.split(" ")[0];
         const [y, m, d] = datePart.split("-").map(Number);
         const lastDate = new Date(y, m - 1, d);
