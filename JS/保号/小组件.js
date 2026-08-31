@@ -423,6 +423,8 @@ function makeNormalWidget(alerts, normal, totalCount, cmDays) {
 
     const allCards = [];
 
+    const isLarge = ctx.widgetFamily === "systemLarge" || ctx.widgetFamily === "systemExtraLarge";
+
     for (const alert of alerts) {
         allCards.push(buildServerCard(alert, true));
     }
@@ -448,12 +450,25 @@ function makeNormalWidget(alerts, normal, totalCount, cmDays) {
         });
     }
 
-    children.push({
+    // 大号：行间用弹性 spacer 撑满整个组件高度；中号及以下：固定 gap 8
+    const columnChildren = [];
+    rows.forEach((row, idx) => {
+        if (idx > 0 && isLarge) columnChildren.push({ type: "spacer" });
+        columnChildren.push(row);
+    });
+
+    const cardsColumn = {
         type: "stack",
         direction: "column",
-        gap: 8,
-        children: rows
-    });
+        children: columnChildren
+    };
+    if (isLarge) {
+        cardsColumn.flex = 1;
+    } else {
+        cardsColumn.gap = 8;
+    }
+
+    children.push(cardsColumn);
 
     return {
         type: "widget",
@@ -513,18 +528,20 @@ try {
         }
     }
 
-    // ========== 新增：最多显示剩余天数最少的 4 个 ==========
+    // ========== 按小组件尺寸决定显示条数：中号最多 4 个，大号最多 8 个 ==========
+    const isLargeFamily = ctx.widgetFamily === "systemLarge" || ctx.widgetFamily === "systemExtraLarge";
+    const maxShow = isLargeFamily ? 8 : 4;
     const allItems = [
         ...alerts.map(a => ({ ...a, remain: -a.diffDays })),
         ...normal
     ];
     allItems.sort((a, b) => a.remain - b.remain);
-    const top4 = allItems.slice(0, 4);
+    const topItems = allItems.slice(0, maxShow);
 
-    const finalAlerts = top4
+    const finalAlerts = topItems
         .filter(item => item.remain <= 0)
         .map(({ remain, ...rest }) => rest);
-    const finalNormal = top4.filter(item => item.remain > 0);
+    const finalNormal = topItems.filter(item => item.remain > 0);
     // ================================================
 
     return makeNormalWidget(finalAlerts, finalNormal, servers.length, cmDays);
