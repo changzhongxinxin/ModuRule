@@ -43,7 +43,7 @@ async function httpGet(url, headers, retryCount = 0) {
 // ========== Emby Gist 数据获取 ==========
 async function readHeartbeatFromCloud() {
     const gists = await httpGet(
-        `${GIST.baseUrl}/gists`,
+        `${GIST.baseUrl}/gists?per_page=100`,
         {
             "Authorization": `token ${GIST.ownerToken}`,
             "Accept": "application/json"

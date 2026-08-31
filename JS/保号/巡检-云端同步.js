@@ -25,7 +25,7 @@ const ALERT_AHEAD_DAYS = parseInt(arg.day, 10) || 3;
 // ========== Gist 读取 (附带重试逻辑) ==========
 const readHeartbeatFromCloud = (callback, retryCount = 0) => {
     $httpClient.get({
-        url: `${GIST.baseUrl}/gists`,
+        url: `${GIST.baseUrl}/gists?per_page=100`,
         headers: {
             "Authorization": `token ${GIST.ownerToken}`,
             "Accept": "application/json"

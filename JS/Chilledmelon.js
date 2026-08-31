@@ -23,19 +23,20 @@ let token = $persistentStore.read(TOKEN_KEY) || "";
 let day = 3;
 
 // ============ [3. 参数与存储解析] ============
-// 只先解析 day，username/password 延迟到需要登录时再加载
+// $argument 只解析一次，day 立即生效，username/password 延迟到登录时再取
+let params = {};
 if (typeof $argument !== "undefined" && $argument) {
     try {
-        const params = Object.fromEntries($argument.split('&').map(item => {
+        params = Object.fromEntries($argument.split('&').map(item => {
             let [key, ...val] = item.split('=');
             return [key, val.join('=')];
         }));
-        if (params.day && !isNaN(params.day)) {
-            day = Number(params.day);
-        }
     } catch (e) {
         console.log("参数解析出错: " + e);
     }
+}
+if (params.day && !isNaN(params.day)) {
+    day = Number(params.day);
 }
 
 // ============ [4. 主逻辑路由] ============
@@ -59,18 +60,8 @@ if (!token) {
 
 // 按需加载账号密码
 function loadCredentials() {
-    if (typeof $argument !== "undefined" && $argument) {
-        try {
-            const params = Object.fromEntries($argument.split('&').map(item => {
-                let [key, ...val] = item.split('=');
-                return [key, val.join('=')];
-            }));
-            if (params.username && !params.username.includes("请填写")) username = params.username;
-            if (params.password && !params.password.includes("请填写")) password = params.password;
-        } catch (e) {
-            console.log("参数解析出错: " + e);
-        }
-    }
+    if (params.username && !params.username.includes("请填写")) username = params.username;
+    if (params.password && !params.password.includes("请填写")) password = params.password;
     if (!username) username = $persistentStore.read(USER_KEY) || "";
     if (!password) password = $persistentStore.read(PASS_KEY) || "";
 }

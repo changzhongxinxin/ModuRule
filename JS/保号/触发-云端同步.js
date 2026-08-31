@@ -65,7 +65,7 @@ const getDateStr = () => {
 // ========== Gist API 封装 (附带重试逻辑) ==========
 const readHeartbeatFromCloud = (callback, retryCount = 0) => {
     $httpClient.get({
-        url: `${GIST.baseUrl}/gists`,
+        url: `${GIST.baseUrl}/gists?per_page=100`,
         headers: {
             "Authorization": `token ${GIST.ownerToken}`,
             "Accept": "application/json"
@@ -79,8 +79,8 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
                 setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
                 return;
             }
-            console.log("[Emby保号] ⚠️ 重试耗尽，使用空数据作为 fallback");
-            callback({});
+            console.log("[Emby保号] ❌ 重试耗尽，读取失败，本次放弃同步");
+            callback(null, null, false);
             return;
         }
         
@@ -88,15 +88,15 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
         try {
             gists = JSON.parse(listData);
         } catch (e) {
-            console.log("[Emby保号] ⚠️ 解析 Gist 列表失败，使用空数据");
-            callback({});
+            console.log("[Emby保号] ❌ 解析 Gist 列表失败，本次放弃同步");
+            callback(null, null, false);
             return;
         }
         
         const targetGist = gists.find(g => g.description === GIST.gistDescription);
         if (!targetGist) {
             console.log("[Emby保号] ℹ️ 云端无历史数据，将创建新 Gist");
-            callback({});
+            callback({}, null, true);
             return;
         }
         
@@ -115,22 +115,44 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
                     setTimeout(() => readHeartbeatFromCloud(callback, retryCount + 1), 1000);
                     return;
                 }
-                console.log("[Emby保号] ⚠️ 重试耗尽，使用空数据");
-                callback({});
+                console.log("[Emby保号] ❌ 重试耗尽，读取失败，本次放弃同步");
+                callback(null, null, false);
                 return;
             }
             
+            let gist;
             try {
-                const gist = JSON.parse(detailData);
-                const filename = Object.keys(gist.files)[0];
-                const content = gist.files[filename].content;
-                const data = JSON.parse(content);
-                console.log("[Emby保号] ✅ 已从云端读取数据");
-                callback(data, targetGist.id);
+                gist = JSON.parse(detailData);
             } catch (e) {
-                console.log("[Emby保号] ⚠️ 解析云端数据失败，使用空数据");
-                callback({});
+                console.log("[Emby保号] ❌ Gist 详情响应异常，本次放弃同步");
+                callback(null, null, false);
+                return;
             }
+
+            // 优先按配置的文件名取，取不到再退第一个文件
+            let fileObj = gist.files[GIST.gistFilename];
+            if (!fileObj) {
+                const filenames = Object.keys(gist.files);
+                if (filenames.length > 0) fileObj = gist.files[filenames[0]];
+            }
+            if (!fileObj) {
+                console.log("[Emby保号] ℹ️ Gist 内暂无文件，将初始化数据");
+                callback({}, targetGist.id, true);
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(fileObj.content);
+            } catch (e) {
+                // 内容解析失败说明旧数据已不可读，没有可保护的东西；
+                // Gist 本体和 id 都在，按空账本 PATCH 重建，避免永久卡死
+                console.log("[Emby保号] ⚠️ 云端文件内容损坏，按空数据重建，其他服的时间戳将重新积累");
+                $notification.post("Emby 保号", "⚠️ 云端数据已重建", "原文件内容无法解析，已重新初始化，其他服需重新触发一次");
+                data = {};
+            }
+            console.log("[Emby保号] ✅ 已从云端读取数据");
+            callback(data, targetGist.id, true);
         });
     });
 };
@@ -192,7 +214,7 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
     // 检查必要参数
     if (!GIST.baseUrl || !GIST.ownerToken) {
         console.log("[Emby保号] ❌ 缺少 Gist 配置，请检查 $argument");
-        console.log("[Emby保号] 需要: GistUrl=xxx&ownerToken=xxx");
+        console.log("[Emby保号] 需要: gistUrl=xxx&Token=xxx");
         $notification.post("Emby 保号", "❌ 配置错误", "缺少 Gist 参数\n请检查 $argument");
         return $done({});
     }
@@ -210,19 +232,11 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
         return $done({});
     }
     
-    let mightMatch = false;
-    for (const s of Object.values(servers)) {
-        if (s.patterns.some(p => url.includes(p) || host.includes(p))) {
-            mightMatch = true;
-            break;
+    readHeartbeatFromCloud((data, existingGistId, ok) => {
+        if (!ok) {
+            console.log("[Emby保号] ⚠️ 云端读取失败，本次不同步，避免产生重复 Gist 或覆盖数据");
+            return $done({});
         }
-    }
-    if (!mightMatch) {
-        console.log(`[Emby保号] 跳过: ${url} 不在配置中`);
-        return $done({});
-    }
-    
-    readHeartbeatFromCloud((data, existingGistId) => {
         const dateStr = getDateStr();
         let matched = false;
         

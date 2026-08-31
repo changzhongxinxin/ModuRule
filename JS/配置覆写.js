@@ -19,8 +19,7 @@ function main(config) {
         "+.baidu.com",
         "+.local",
         "+.lan",
-        "+.qq.com",
-        "+.weixin.qq.com"
+        "+.qq.com"
       ]
     },
     "tun": {

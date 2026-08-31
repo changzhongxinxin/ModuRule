@@ -268,8 +268,6 @@ export default async function (ctx) {
   const storedConfig = ctx.storage.getJSON("ComponentService");
   const cookie = storedConfig?.ChinaUnicom?.Settings?.Cookie || ctx.env.Cookie || ctx.env.cookie || "";
   const phone = ctx.env.phone || ctx.env.手机号 || "";
-//console.log(cookie);
-//console.log(phone);
   function getQWIcon(id) {
     const code = parseInt(id);
     if (code === 100) return "sun.max.fill";
@@ -301,9 +299,6 @@ export default async function (ctx) {
         ctx.http.get(`https://${QW_HOST}/v7/weather/3d?location=${loc}`, { headers }).then(r => r.json()),
         ctx.http.get(`https://${QW_HOST}/v7/indices/1d?type=10&location=${loc}`, { headers }).then(r => r.json())
       ]);
-console.log(nowW);
-console.log(dailyW);
-console.log(airW);
 
       if (nowW?.code === "200") {
         weatherData.temp = nowW.now.temp;
@@ -349,8 +344,6 @@ console.log(airW);
           { headers: uHeaders }
         ).then(r => r.json())
       ]);
-//console.log(feeRes);
-//console.log(detRes);
       if (feeRes?.feeResource) {
         data.fee = { value: feeRes.feeResource.feePersent || "--", unit: "元" };
       }
