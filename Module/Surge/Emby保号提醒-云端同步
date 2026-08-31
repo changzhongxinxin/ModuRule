@@ -3,7 +3,7 @@
 #!category=工具
 #!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
 #!arguments=Gist地址:"",Gist密码:"",Gist描述:"",文件名:"",提前提醒天数:""
-#!arguments-desc=[参数设置]\n\n Gist描述（留空默认：Emby Keepalive Data）\n\n 文件名（留空默认：emby_keepalive_data.json）
+#!arguments-desc=[参数设置]\n\n Gist地址:自建地址(默认是GitHub官方地址)\n\n Gist密码:密码/令牌\n\n Gist描述（留空默认：Emby Keepalive Data）\n\n 文件名（留空默认：emby_keepalive_data.json）
 
 
 [Script]
