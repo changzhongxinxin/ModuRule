@@ -252,7 +252,7 @@ function makeEmptyWidget() {
 
 function buildServerCard(item, isAlert) {
     const remain = isAlert ? 0 : item.remain;
-    const days = Number(item.days) || 25;
+    const days = item.days;
     const percent = isAlert ? 0 : Math.round((remain / days) * 100);
     const ds = getDayStyle(percent);
     const timeStr = formatTime(item.lastStr);
@@ -491,7 +491,7 @@ try {
 
     for (const name of servers) {
         const info = data[name];
-        const days = Number(info?.days) || 25;
+        const days = info.days;
         const lastStr = info?.lastBeat;
 
         // 心跳缺失按"从未触发"处理，避免 split 抛错导致整个组件渲染失败

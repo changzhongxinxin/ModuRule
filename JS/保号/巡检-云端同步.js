@@ -134,7 +134,7 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
         
         for (const name of servers) {
             const info = data[name];
-            const days = info?.days || 25;
+            const days = info.days;
             const lastStr = info?.lastBeat;
             
             if (!lastStr) {
