@@ -4,7 +4,7 @@
 // 2. CM Token：自动读取持久化存储 $persistentStore 的 'ChilledmelonToken'，或通过 $argument / ctx.env 传入 cmToken
 
 export default async function(ctx) {
-// ========== 配置读取（$argument 优先，fallback 到 ctx.env）==========
+// ========== 配置读取（ctx.env 优先，fallback 到 $argument）==========
 let arg = {};
 try {
     if (typeof $argument !== 'undefined' && $argument) {
@@ -13,10 +13,10 @@ try {
 } catch (e) {}
 
 const GIST = {
-    baseUrl: arg.gistUrl || ctx.env?.gistUrl || "https://api.github.com",
-    ownerToken: arg.Token || arg.token || ctx.env?.Token || ctx.env?.token || "",
-    gistDescription: arg.gistDescription || ctx.env?.gistDescription || "Emby Keepalive Data",
-    gistFilename: arg.gistFilename || ctx.env?.gistFilename || "emby_keepalive_data.json"
+    baseUrl: ctx.env?.gistUrl || arg.gistUrl || "https://api.github.com",
+    ownerToken: ctx.env?.Token || ctx.env?.token || arg.Token || arg.token || "",
+    gistDescription: ctx.env?.gistDescription || arg.gistDescription || "Emby Keepalive Data",
+    gistFilename: ctx.env?.gistFilename || arg.gistFilename || "emby_keepalive_data.json"
 };
 
 if (!GIST.ownerToken) {
@@ -83,7 +83,7 @@ async function readHeartbeatFromCloud() {
 
 // ========== Chilledmelon (Me 接口) 仅使用 Token 请求 ==========
 async function fetchChilledmelonDays() {
-    let token = arg.cmToken || ctx.env?.cmToken;
+    let token = ctx.env?.cmToken || arg.cmToken;
     if (!token && typeof $persistentStore !== 'undefined') {
         token = $persistentStore.read('ChilledmelonToken') || "";
     }
