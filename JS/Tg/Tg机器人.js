@@ -1,8 +1,9 @@
 /**
  * ============================================================================
- * Telegram 双向机器人 · 三合一合并版
- * ============================================================================
- * --------------------------- 部署配置（wrangler.toml）-----------------------
+ * Telegram 双向机器人（单文件 Cloudflare Worker）
+ * 用户私聊 → 消息转入管理群话题；管理员在话题回复 → 转达用户
+ * 完整部署说明见 README.md，此处仅列 wrangler.toml 关键配置：
+ * ----------------------------------------------------------------------------
  *   name = "tg-dm-bot"
  *   main = "worker.js"
  *   compatibility_date = "2024-09-01"
@@ -15,37 +16,8 @@
  *   binding = "AI"                       # Workers AI 绑定（AI 风控用）
  *
  *   [vars]
- *   BOT_TOKEN = "123:abc"                # 必填
- *   SUPERGROUP_ID = "-100xxxxxxxxxx"     # 必填，超级群组 ID（-100 开头）
- *   TURNSTILE_SITE_KEY = "..."           # 必填（Turnstile 前端 key）
- *   TURNSTILE_SECRET_KEY = "..."         # 必填（Turnstile 后端 key）
- *   ADMIN_IDS = "123,456"                # 可选，管理员白名单（逗号分隔，与群管理员身份取并集）
- *   HEALTH_KEY = "任意随机串"            # 强烈建议配置：/health 管理密钥（只读/管理模式；不用于 Telegram 推送校验）
- *   AI_SPAM_CHECK = "true"               # 可选，默认开启（绑定了 AI 才生效）
- *   AI_SPAM_THRESHOLD = "5"              # 可选，AI 拦截几次后自动封禁
- *   AI_MODEL = "@cf/zai-org/glm-4.7-flash"       # 可选，文本审核模型（中文效果更好，免费层可用）
- *                       # 注意：模型会被 Cloudflare 下线，报 5028 deprecated 时到模型目录换现役模型：
- *                       # https://developers.cloudflare.com/workers-ai/models/
- *   AI_IMAGE_CHECK = "true"              # 可选，默认开启：无文字说明的图片走视觉模型审核（绑定了 AI 才生效）
- *   AI_IMAGE_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct"   # 可选，图片审核视觉模型（免费层可用）
- *   BLOCK_KEYWORDS = "日结|刷单|加微|引流"   # 可选，命中直接拦截的正则（每行一条，// 为注释）
- *                                            # 未配置时使用内置默认词库；设为空字符串 "" 关闭
- *
- * 注意：
- *   1. 机器人需加入超级群组并设为管理员（需要「管理话题」权限）
- *   2. 需在 BotFather 关闭 Privacy Mode，否则机器人收不到群内管理员回复
- *   3. Webhook 地址设置为：https://<WORKER_DOMAIN>/
- *   4. AI 自检：管理模式下访问 /health?key=<HEALTH_KEY>&aitest=<要测试的文本>
- *      用自定义文本跑一次真实 AI 判定（含 AI 原话返回），用于验证 AI 是否生效/判得准不准
- *   5. 存储使用 D1，数据表在首次访问时自动创建（CREATE TABLE IF NOT EXISTS），无需手动执行 SQL
- *   6. 历史 KV 数据不做迁移：切换后老用户会重新走一次人机验证并自动重建话题
- *   7. 两把密钥各司其职：
- *      - HEALTH_KEY（环境变量）：/health 管理密钥。配置后 /health 不带密钥只显示基础状态，
- *        带 ?key=<HEALTH_KEY> 进入管理模式（Webhook 注册/同步、刷新域名；附加 &rotate=1 轮换防伪密钥）；
- *        例外：Telegram 侧尚未注册 webhook 时（首次部署）允许无密钥完成首次引导注册
- *      - Webhook 防伪密钥：代码自动生成并存库（kv 表 webhook:secret），经 setWebhook 交给 Telegram，
- *        入口据此拒绝伪造更新；管理模式下 &rotate=1 可轮换
- *      - Worker 域名：首次请求自动记录到数据库；换域名后带密钥访问一次 /health 即更新
+ *   BOT_TOKEN / SUPERGROUP_ID / TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY   # 必填
+ *   ADMIN_IDS / HEALTH_KEY / AI_* / BLOCK_KEYWORDS / AUTO_DELETE_*          # 可选，含义见 README
  * ============================================================================
  */
 
@@ -55,20 +27,20 @@ const CONFIG = {
     VERIFY_EXPIRE_SECONDS: 300,          // 验证链接 5 分钟有效
     VERIFIED_EXPIRE_SECONDS: 604800,     // Turnstile 通过后默认 7 天
     MEDIA_GROUP_EXPIRE_SECONDS: 60,
-    MEDIA_GROUP_DELAY_MS: 3000,          // 媒体组聚合等待 3 秒（v5.3）
-    PENDING_MAX_MESSAGES: 10,            // 验证期间最多暂存的消息数（v5.3）
-    ADMIN_CACHE_TTL_SECONDS: 300,        // 管理员权限缓存 5 分钟（v5.3）
-    NEEDS_REVERIFY_TTL_SECONDS: 600,     // 需重新验证标记 TTL（v5.3）
-    RATE_LIMIT_MESSAGE: 45,              // 每分钟消息上限（v5.3）
+    MEDIA_GROUP_DELAY_MS: 3000,          // 媒体组聚合等待 3 秒
+    PENDING_MAX_MESSAGES: 10,            // 验证期间最多暂存的消息数
+    ADMIN_CACHE_TTL_SECONDS: 300,        // 管理员权限缓存 5 分钟
+    NEEDS_REVERIFY_TTL_SECONDS: 600,     // 需重新验证标记 TTL
+    RATE_LIMIT_MESSAGE: 45,              // 每分钟消息上限
     RATE_LIMIT_MESSAGE_WINDOW: 60,
-    RATE_LIMIT_VERIFY: 3,                // 5 分钟内验证请求上限（v5.3）
+    RATE_LIMIT_VERIFY: 3,                // 5 分钟内验证请求上限
     RATE_LIMIT_VERIFY_WINDOW: 300,
     MAX_TITLE_LENGTH: 128,
     MAX_NAME_LENGTH: 30,
     API_TIMEOUT_MS: 10000,
-    CLEANUP_BATCH_SIZE: 10,              // /cleanup 批量并发数（v5.3）
+    CLEANUP_BATCH_SIZE: 10,              // /cleanup 批量并发数
     MAX_CLEANUP_DISPLAY: 20,
-    CLEANUP_LOCK_TTL_SECONDS: 1800,      // /cleanup 防并发锁 30 分钟（v5.3）
+    CLEANUP_LOCK_TTL_SECONDS: 1800,      // /cleanup 防并发锁 30 分钟
     AUTO_DELETE_WELCOME_SECONDS: 60,     // 欢迎语自动撤回秒数（env.AUTO_DELETE_WELCOME 可覆盖，0=关闭）
     AUTO_DELETE_VERIFY_SECONDS: 300,     // 验证消息自动撤回秒数（默认与验证链接有效期一致）
     AUTO_DELETE_NOTICE_SECONDS: 120,     // 临时提示/验证成功/频控/AI拦截提示自动撤回秒数
@@ -90,15 +62,15 @@ const CONFIG = {
     DEFAULT_BLOCK_KEYWORDS: "日结|刷单|加微信|加微|加V|引流|兼职招聘|高薪兼职|招聘兼职",
 };
 
-// 线程健康检查缓存（实例内，v5.3）
-// 同一实例内的并发保护：避免同一用户短时间内重复创建话题（v5.3）
+// 话题创建并发保护（实例内）
+// 同一实例内的并发保护：避免同一用户短时间内重复创建话题
 const topicCreateInFlight = new Map();
-// 管理员权限缓存（实例内，v5.3）
+// 管理员权限缓存（实例内）
 const adminStatusCache = new Map();
 // 反应熔断：被 Telegram 拒绝(REACTION_INVALID)的会话 60 分钟内不再尝试，避免刷错误日志
 const reactionBreaker = new Map();
 
-// --- 结构化日志系统（来自 v5.3） ---
+// --- 结构化日志系统 ---
 const Logger = {
     info(action, data = {}) {
         console.log(JSON.stringify({ timestamp: new Date().toISOString(), level: "INFO", action, ...data }));
@@ -122,13 +94,9 @@ const Logger = {
 };
 
 // ============================================================================
-// 存储层（Cloudflare D1 · 首次访问自动建表）
-// ----------------------------------------------------------------------------
-// 仅 3 张表，职责清晰：
-//   users     用户主表：一行 = 全量状态（话题/验证/封禁/拦截计数/AI白名单/进行中验证挑战）
-//   messages  双向消息记录：AI 情景上下文 + 编辑同步映射（原消息 ↔ 副本，保留 7 天）
-//   kv        通用临时键值：限速/补发去重/媒体组缓冲/needs_verify/健康缓存/管理员缓存/锁
-// TTL 用 expires_at（秒级时间戳）实现：读取时过滤，后台定期清理。
+// 存储层（D1，3 张表，首次访问自动建表）
+//   users 用户主表｜messages 消息台账（AI 情景 + 编辑映射）｜kv 临时键值（限速/锁/缓冲等）
+//   TTL 用 expires_at 实现：读取时过滤，sweepExpired 定期清理
 // ============================================================================
 
 function nowSec() {
@@ -176,8 +144,7 @@ const SCHEMA_STATEMENTS = [
 ];
 
 let schemaReadyPromise = null;
-// 首次访问时自动建表（幂等），每个 Worker 实例只执行一次。
-// 逐条 prepare().run() 而非 batch()：规避部分运行时对 batch 语句对象的序列化兼容问题
+// 首次访问自动建表（幂等，实例内只跑一次）；逐条 run 而非 batch，规避运行时序列化兼容问题
 async function ensureSchema(env) {
     if (!schemaReadyPromise) {
         schemaReadyPromise = (async () => {
@@ -431,7 +398,7 @@ async function getConversation(env, userId, limit = 12) {
     return (results || []).reverse();
 }
 
-// ---- 补发去重（kv 键：fwd:<uid>:<msgid>） ----
+// ---- 补发去重（fwd:<uid>:<msgid>） ----
 async function isAlreadyForwarded(env, userId, messageId) {
     return (await kvGet(env, `fwd:${userId}:${messageId}`)) !== null;
 }
@@ -529,9 +496,8 @@ function autoDeleteSeconds(raw, fallback) {
     return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-// 自动撤回登记：写入 del:<chat>:<msg>（到期时间=TTL），由 sweepExpired 每分钟扫描到期行统一删除。
-// 唯一删除路径就是清扫（Cron 触发为主、消息流量触发兜底），不依赖 Worker 内存定时器（免费版会被提前回收）。
-// 登记写入若遇 D1 瞬时错误会被吞掉导致漏删，这里重试 3 次并记录日志
+// 自动撤回登记：写入 del:<chat>:<msg>，由 sweepExpired 每分钟扫描统一删除；
+// 写入失败重试 3 次，避免瞬时 D1 错误导致消息永远残留
 async function scheduleAutoDelete(env, chatId, messageId, delaySeconds) {
     if (!messageId || !delaySeconds || delaySeconds <= 0) return;
     const key = `del:${chatId}:${messageId}`;
@@ -546,7 +512,7 @@ async function scheduleAutoDelete(env, chatId, messageId, delaySeconds) {
     Logger.error("autodelete_register_gave_up", { key });
 }
 
-// ---- 过期数据清理：每 1 分钟最多执行一次（配合 Cron 触发器频率）----
+// ---- 过期数据清理（每分钟最多一次，Cron 触发为主、消息流量兜底） ----
 async function sweepExpired(env) {
     try {
         const last = await kvGet(env, "sweep:last_run");
@@ -554,15 +520,14 @@ async function sweepExpired(env) {
         await kvPut(env, "sweep:last_run", "1", 60);
         await ensureSchema(env);
         const t = nowSec();
-        // 自动撤回：删除到期的登记消息。删除失败时保留登记顺延重试（限流/超时等临时错误 +5 分钟；
-        // 消息不存在等永久性错误 400/403 才放弃），防止登记被批量清理误吞后消息永远残留
+        // 删除到期登记消息：临时错误 +5 分钟顺延重试，400/403 永久错误才放弃
         const { results: pendingDeletes } = await env.DB.prepare(
             "SELECT k FROM kv WHERE expires_at <= ?1 AND k LIKE 'del:%' LIMIT 50"
         ).bind(t).all();
         for (const row of (pendingDeletes || [])) {
             const parts = row.k.split(":");
             if (parts.length !== 3) continue;
-            // chat_id 保持字符串（Telegram 接受字符串形式，避免 Number 转换超大 ID 丢精度）
+            // chat_id 保持字符串（避免大 ID 转 Number 丢精度）
             const res = await tgApiCall(env, "deleteMessage", { chat_id: parts[1], message_id: Number(parts[2]) });
             if (res.ok) {
                 await kvDelete(env, row.k);
@@ -584,14 +549,13 @@ async function sweepExpired(env) {
     }
 }
 
-// ---- Webhook 自动注册：仅在访问 /health 时触发（消息收发不会触发）——
-//      检查 Telegram 的回调地址，未绑定/域名变更则自动 setWebhook，并返回状态 ----
+// ---- Webhook 自动注册（仅 /health 触发）：未绑定/域名变更时自动 setWebhook ----
 async function ensureWebhook(env, origin) {
     try {
         const info = await tgApiCall(env, "getWebhookInfo", {});
         const current = info.result?.url || "";
         const target = origin + "/";
-        // 每次管理模式的 /health 都重新 setWebhook（幂等），确保防伪密钥等配置总能同步给 Telegram
+        // 管理模式每次都 setWebhook（幂等），确保防伪密钥总能同步
         const webhookSecret = await getOrCreateWebhookSecret(env);
         const res = await tgApiCall(env, "setWebhook", {
             url: target,
@@ -617,12 +581,12 @@ async function ensureWebhook(env, origin) {
 export default {
     async fetch(request, env, ctx) {
         try {
-            // 环境自检（v5.3）
+            // 环境自检
             if (!env.DB) return new Response("Error: D1 'DB' not bound.");
             if (!env.BOT_TOKEN) return new Response("Error: BOT_TOKEN not set.");
             if (!env.SUPERGROUP_ID) return new Response("Error: SUPERGROUP_ID not set.");
 
-            // 统一为字符串类型（v5.3）
+            // 统一为字符串类型
             const normalizedEnv = {
                 ...env,
                 SUPERGROUP_ID: String(env.SUPERGROUP_ID),
@@ -635,11 +599,10 @@ export default {
             const url = new URL(request.url);
             const path = url.pathname;
 
-            // 自动记录 Worker 域名到数据库（供验证链接拼接），替代 WORKER_DOMAIN 环境变量；
-            // 首次请求写入，之后走实例内缓存零开销
+            // 自动记录 Worker 域名（供验证链接拼接），首写后走实例内缓存
             await ensureConfigOrigin(normalizedEnv, url.origin);
 
-            // 1. Turnstile 验证页（基础版）
+            // 1. Turnstile 验证页
             if (path === "/turnstile-verify") {
                 return await handleTurnstileVerify(request, normalizedEnv, ctx);
             }
@@ -657,7 +620,7 @@ export default {
 
                 let webhook = null;
                 if (authorized) {
-                    // 管理模式：刷新存库的 Worker 域名（换域名后带密钥访问一次 /health 即更新）
+                    // 管理模式：刷新存库的 Worker 域名
                     await kvPut(normalizedEnv, "config:origin", url.origin, 315360000);
                     cachedOrigin = url.origin;
                     if (url.searchParams.get("rotate") === "1") {
@@ -666,8 +629,7 @@ export default {
                     }
                     webhook = await ensureWebhook(normalizedEnv, url.origin);
                 } else {
-                    // 引导例外：Telegram 侧还没有任何 webhook 注册时，允许无密钥完成首次注册。
-                    // getWebhookInfo 结果做 60 秒缓存：无密钥的 /health 无限流，缓存防止被高频刷量消耗 Telegram API 配额
+                    // 引导例外：Telegram 侧无 webhook 时允许无密钥首次注册；结果 60 秒缓存防刷量
                     let info = null;
                     const cachedInfo = await kvGet(normalizedEnv, "health:webhookinfo");
                     if (cachedInfo) {
@@ -745,10 +707,8 @@ export default {
 
             // 3. Telegram Webhook
             if (path === "/" && request.method === "POST") {
-                // Webhook 防伪校验：密钥由代码自动生成存库（kv 表 webhook:secret），
-                // 经 setWebhook 的 secret_token 同步给 Telegram，回推时带在
-                // X-Telegram-Bot-Api-Secret-Token 头里。库中尚无密钥说明初始化未完成，
-                // 一律拒绝：正常流程下 setWebhook 先生成并落库密钥，真实更新不会先于密钥到达
+                // Webhook 防伪校验：密钥自动生成存库并经 setWebhook 交给 Telegram（secret_token 头回传）；
+                // 库中无密钥说明初始化未完成，一律拒绝
                 const hookSecret = await kvGet(normalizedEnv, "webhook:secret");
                 if (!hookSecret) {
                     Logger.warn("webhook_secret_missing");
@@ -782,8 +742,7 @@ export default {
             return new Response("404 Not Found", { status: 404 });
 
         } catch (error) {
-            // 返回 503 让 Telegram 重试该更新：瞬时错误（D1/网络/TG 5xx）不重试会变成永久丢消息。
-            // 确定性配置错误返回 500，Telegram 会停止重试避免无限循环
+            // 瞬时错误返回 503 让 Telegram 重试；确定性配置错误返回 500 停止重试
             const message = String(error?.message || error || "");
             const status = message.includes("not bound") || message.includes("not set") || message.includes("must start with")
                 ? 500
@@ -819,7 +778,7 @@ async function handleTelegramWebhook(update, env, ctx) {
         return new Response("OK");
     }
 
-    // 精准识别编辑消息状态（基础版）
+    // 精准识别编辑消息状态
     const isEdit = !!update.edited_message;
     const msg = update.message || update.edited_message;
     if (!msg) return new Response("OK");
@@ -828,7 +787,7 @@ async function handleTelegramWebhook(update, env, ctx) {
     if (msg.chat && msg.chat.type === "supergroup") {
         if (String(msg.chat.id) === env.SUPERGROUP_ID) {
             try {
-                // 话题被手动关闭/重开时同步 KV 状态（v5.3）
+                // 话题被手动关闭/重开时同步 KV 状态
                 if (msg.forum_topic_closed && msg.message_thread_id) {
                     await updateThreadStatus(msg.message_thread_id, true, env);
                     return new Response("OK");
@@ -837,7 +796,7 @@ async function handleTelegramWebhook(update, env, ctx) {
                     await updateThreadStatus(msg.message_thread_id, false, env);
                     return new Response("OK");
                 }
-                // General 话题可能没有 message_thread_id，但允许在其中发 /cleanup（v5.3）
+                // General 话题可能没有 message_thread_id，但允许在其中发 /cleanup
                 const text = (msg.text || "").trim();
                 if (msg.message_thread_id || text.startsWith("/")) {
                     await handleAdminMessage(msg, env, ctx, isEdit);
@@ -857,7 +816,7 @@ async function handleTelegramWebhook(update, env, ctx) {
         try {
             await handlePrivateMessage(msg, env, ctx, isEdit);
         } catch (e) {
-            // 不向用户泄露技术细节（v5.3）
+            // 不向用户泄露技术细节
             Logger.error("private_message_failed", e, { userId: msg.chat.id });
             await tgApiCall(env, "sendMessage", { chat_id: msg.chat.id, text: "⚠️ 系统繁忙，请稍后再试。" }).catch(() => {});
         }
@@ -882,7 +841,7 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
         return;
     }
 
-    // 消息速率限制（v5.3）
+    // 消息速率限制
     const rateLimit = await checkRateLimit(userId, env, "message", CONFIG.RATE_LIMIT_MESSAGE, CONFIG.RATE_LIMIT_MESSAGE_WINDOW);
     if (!rateLimit.allowed) {
         const warnMsg = await tgApiCall(env, "sendMessage", { chat_id: userId, text: "⚠️ 发送过于频繁，请稍后再试。" });
@@ -891,7 +850,7 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
         return;
     }
 
-    // 拦截普通用户发送的指令（v5.3）；/start 深链接（"/start 参数"）放行
+    // 拦截普通用户发送的指令；/start 深链接（"/start 参数"）放行
     const userCmd = text.trim().split(/\s+/)[0];
     if (!isEdit && userCmd && userCmd.startsWith("/") && userCmd !== "/start") {
         return;
@@ -899,12 +858,12 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
 
     const isStart = !isEdit && userCmd === "/start";
 
-    // ---- 未验证：欢迎信息 + Turnstile 验证链接（验证期间消息暂存，v5.3） ----
+    // ---- 未验证：欢迎信息 + Turnstile 验证链接（消息暂存） ----
     if (!isUserVerified(rec)) {
         if (isStart) {
             await sendWelcome(env, userId);
         } else {
-            // 暂存入队前先过关键词硬拦截（免费层），防止"先发广告再完成验证"绕过风控
+            // 暂存入队前先过关键词硬拦截，防"先发广告再验证"绕过
             const queueText = msg.text || msg.caption || "";
             const blockKeywordsValue = getBlockKeywordsValue(env);
             if (queueText && blockKeywordsValue) {
@@ -916,7 +875,7 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
                     }
                 }
             }
-            // 未验证用户的纯图片也先做一次视觉审核，避免验证暂存阶段绕过风控
+            // 未验证用户的纯图片也先做视觉审核
             if (!queueText && Array.isArray(msg.photo) && msg.photo.length > 0) {
                 const imageVerdict = await aiImageCheck(env, msg, userId);
                 if (imageVerdict && imageVerdict.spam) {
@@ -925,26 +884,25 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
                 }
             }
         }
-        // 暂存携带文本，供验证通过后补发前做 AI 补检
+        // 暂存携带文本，供补发前 AI 补检
         const pendingIds = isStart ? [] : [{ id: msg.message_id, text: msg.text || msg.caption || "" }];
         await sendVerifyMessage(userId, env, pendingIds);
         return;
     }
 
-    // 对话被管理员关闭（基础版）
+    // 对话被管理员关闭
     if (rec && rec.closed) {
         await tgApiCall(env, "sendMessage", { chat_id: userId, text: "🚫 当前对话已被管理员关闭。" });
         return;
     }
 
-    // 已验证用户发 /start 只回欢迎信息（基础版行为）
+    // 已验证用户发 /start 只回欢迎信息
     if (isStart) {
         await sendWelcome(env, userId);
         return;
     }
 
-    // 编辑同步支持文本与媒体说明：图片/视频/文件/音频/动图事后补写或修改 caption 也算编辑
-    // （语音不允许编辑，Telegram 不会推送其编辑事件；其余类型如投票、位置无可编辑内容仍忽略）
+    // 编辑同步：文本与媒体 caption（语音/投票/位置等无可编辑内容，忽略）
     const editHasMedia = Array.isArray(msg.photo) || !!msg.video || !!msg.document || !!msg.audio || !!msg.animation;
     if (isEdit && !msg.text && !editHasMedia) {
         Logger.debug("edit_message_ignored_non_editable", { userId });
@@ -985,10 +943,8 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
             }
         }
 
-        // 编辑路径兜底：图片此前被拦截（如纯图广告）时群里没有副本、消息映射也不存在，
-        // 事后补写说明触发编辑会走 copyMessage 回退把整张图重新送进群。此路径只审文字
-        // 等于图不过审，因此仅在"编辑的图片无映射（即将重发整图）"时补一次视觉审核，
-        // 正常的说明修改（有映射、就地编辑）不重复耗 AI 额度
+        // 编辑兜底：图片无映射（此前被拦截/即将整图重发）时补一次视觉审核，防止只审文字放行广告图；
+        // 有映射的就地编辑不重复耗 AI 额度
         if (isEdit && Array.isArray(msg.photo) && msg.photo.length > 0) {
             const mapped = await getMessageDst(env, userId, msg.message_id);
             if (!mapped) {
@@ -1005,7 +961,7 @@ async function handlePrivateMessage(msg, env, ctx, isEdit = false) {
     await forwardToTopic(msg, env, ctx, isEdit);
 }
 
-// /start 欢迎信息（基础版，AI 开关动态提示）
+// /start 欢迎信息（AI 开关动态提示）
 async function sendWelcome(env, userId) {
     const aiTip = isAiSpamCheckEnabled(env) ? "• 消息会经过 AI 垃圾信息风控，请勿发送广告/骚扰内容\n" : "";
     const startMessage = `欢迎使用双向私信机器人！
@@ -1045,7 +1001,7 @@ function getBlockKeywordsValue(env) {
     return String(env.BLOCK_KEYWORDS);
 }
 
-// 解析 BLOCK_KEYWORDS 为正则规则（来自自动置顶版）：每行一条，支持正则，// 开头为注释行
+// 解析 BLOCK_KEYWORDS 为正则规则：每行一条，支持正则，// 开头为注释行
 // 例：BLOCK_KEYWORDS = "日结|兼职|刷单|加微|引流"
 function parseBlockKeywords(envValue) {
     if (!envValue) return [];
@@ -1100,8 +1056,7 @@ async function aiSpamCheck(env, history, text, userId = null) {
 
     const startedAt = Date.now();
     try {
-        // glm 系列：max_tokens 已废弃（用 max_completion_tokens），且思考 token 按输出计费、
-        // 可能挤占 JSON 输出预算，审核任务把思考档调到最低；其他模型保持各自的通用参数
+        // glm 系列：思考 token 按输出计费会挤占 JSON 预算，思考档调到最低；其他模型用通用参数
         const runParams = {
             messages: [
                 { role: "system", content: AI_SPAM_SYSTEM_PROMPT },
@@ -1117,8 +1072,7 @@ async function aiSpamCheck(env, history, text, userId = null) {
         }
         const res = await env.AI.run(model, runParams);
 
-        // 截断检测：finish_reason=length 说明输出被 token 上限掐断（多为思考 token 占满预算，
-        // 正文 JSON 未生成），此时判定无效、走放行；看到本日志应上调 AI_MAX_TOKENS
+        // finish_reason=length 说明输出被上限掐断、判定无效走放行；看到本日志应上调 AI_MAX_TOKENS
         if (res?.choices?.[0]?.finish_reason === "length") {
             Logger.warn("ai_output_truncated", {
                 type: "text", userId, model,
@@ -1127,8 +1081,7 @@ async function aiSpamCheck(env, history, text, userId = null) {
         }
 
         const raw = extractAiText(res);
-        // AI 原始响应日志：默认关闭（Workers Logs 按条数计量，省日志配额），
-        // 排查时在环境变量加 AI_DEBUG_LOG=true 开启
+        // AI 原始响应日志默认关闭（省日志配额），AI_DEBUG_LOG=true 开启
         if (env.AI_DEBUG_LOG === "true") {
             Logger.info("ai_response_received", {
                 type: "text",
@@ -1261,8 +1214,7 @@ const AI_IMAGE_SYSTEM_PROMPT = `你是图片广告营销审核器。只判断图
 {"spam":true或false,"reason":"简短中文原因"}`;
 
 
-// 不同 Workers AI 模型的响应结构不一致：response/result/output/content 可能是字符串或嵌套对象，
-// 统一提取为纯文本，避免 AI 原话变成 "[object Object]" 导致解析失败
+// 统一提取 AI 响应为纯文本（不同模型响应结构不一致）
 function extractAiText(res) {
     if (res == null) return "";
     if (typeof res === "string") return res;
@@ -1314,7 +1266,7 @@ function parseAiVerdict(raw) {
     return null;
 }
 
-// 命中广告后的处理：拦截 + 计数 + 达阈值自动封禁
+// 命中广告后：拦截 + 计数 + 达阈值自动封禁
 async function handleSpamDetected(env, userId, reason) {
     // AI_SPAM_THRESHOLD 设为 "0" = 只拦截不自动封禁；未配置/非法值用默认阈值
     const rawThreshold = parseInt(env.AI_SPAM_THRESHOLD, 10);
@@ -1359,7 +1311,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
     try {
         const userId = msg.chat.id;
 
-        // 并发兜底：已被标记需重新验证时暂停转发（v5.3）
+        // 并发兜底：已被标记需重新验证时暂停转发
         const needsVerify = await kvGet(env, `needs_verify:${userId}`);
         if (needsVerify) {
             await sendVerifyMessage(userId, env, [{ id: msg.message_id, text: msg.text || msg.caption || "" }]);
@@ -1372,7 +1324,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
             return { ok: false, status: "closed" };
         }
 
-        // 获取/创建话题（并发去重 v5.3 + 资料卡来自自动置顶版）
+        // 获取/创建话题（并发去重 + 发资料卡）
         if (!rec || !rec.thread_id) {
             rec = await getOrCreateUserTopic(msg.from, env, userId);
             if (!rec || !rec.thread_id) {
@@ -1380,9 +1332,6 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
                 return { ok: false, status: "topic_create_failed" };
             }
         }
-
-        // （话题健康探测已移除：不再发送🔎探针消息。话题被删时由下方转发失败的
-        //   isTopicMissingOrDeleted 分支兜底发现，自动重建话题并要求重新验证）
 
         // 媒体组（相册）：普通消息聚合发送；相册内单条的编辑不在此拦截，
         // 落到下方编辑同步（副本映射由 delaySend 落库，可逐条改/补说明）
@@ -1400,8 +1349,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
         let replacedMapping = null;
 
         if (isEdit) {
-            // 编辑同步：优先就地修改群内副本。文本消息改文字（editMessageText）；
-            // 媒体消息改/补说明（editMessageCaption，含发送后补写 caption 的情况，空串=清除说明）
+            // 编辑同步：优先就地修改群内副本（文本改文字；媒体改/补说明，空串=清除）
             const mapped = await getMessageDst(env, userId, msg.message_id);
             if (mapped) {
                 replacedMapping = mapped;
@@ -1419,7 +1367,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
                         caption_entities: msg.caption_entities || undefined
                     });
                 if (editRes.ok) {
-                    // 就地更新消息记录（文本/说明+映射有效期）+ 给话题副本加常驻 🦄（=此消息被编辑过）
+                    // 就地更新映射 + 给副本加常驻 🦄（被编辑过标记）
                     await recordMessage(env, userId, "user", userId, msg.message_id, env.SUPERGROUP_ID, mapped.msgId, msg.text || msg.caption || "", CONFIG.MESSAGE_MAP_TTL_SECONDS);
                     await setUnifiedReaction(env, env.SUPERGROUP_ID, mapped.msgId);
                     return { ok: true, status: "edited", messageId: mapped.msgId };
@@ -1434,8 +1382,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
                 message_thread_id: rec.thread_id
             });
         } else if (msg.text) {
-            // 文本消息以 bot 名义 copy（不带转发头，且副本可被后续编辑同步就地修改；
-            // forwardMessage 的转发件机器人无权编辑）
+            // 文本以 bot 名义 copy（不带转发头，副本可被后续编辑同步就地修改）
             forwardResult = await tgApiCall(env, "copyMessage", {
                 chat_id: env.SUPERGROUP_ID,
                 from_chat_id: userId,
@@ -1452,7 +1399,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
                 });
             }
         } else {
-            // 媒体消息仍优先 forward（保留来源信息），失败降级 copy
+            // 媒体优先 forward（保留来源），失败降级 copy
             forwardResult = await tgApiCall(env, "forwardMessage", {
                 chat_id: env.SUPERGROUP_ID,
                 from_chat_id: userId,
@@ -1473,7 +1420,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
             targetMsgId = forwardResult.result.message_id;
         }
 
-        // 检测 Telegram 静默重定向到 General 的情况（v5.3）
+        // 检测 Telegram 静默重定向到 General 的情况
         const resThreadId = forwardResult.result?.message_thread_id;
         if (forwardResult.ok && resThreadId !== undefined && resThreadId !== null &&
             Number(resThreadId) !== Number(rec.thread_id)) {
@@ -1493,10 +1440,10 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
             return { ok: false, status: "topic_invalid" };
         }
 
-        // （copyMessage 的返回值天生只有 message_id、不带 thread_id，属正常现象，
-        //   不做二次探测——🔎探针已移除；copy 指定了 thread_id，话题不存在时会直接报错）
+        // copyMessage 的返回值天生不带 thread_id，属正常现象；
+        // copy 指定了 thread_id，话题不存在时会直接报错，由下方失败分支兜底
 
-        // 转发失败：识别关键错误（v5.3）
+        // 转发失败：识别关键错误
         if (!forwardResult.ok) {
             const desc = normalizeTgDescription(forwardResult.description);
             if (isTopicMissingOrDeleted(desc)) {
@@ -1547,7 +1494,7 @@ async function forwardToTopic(msg, env, ctx, isEdit = false) {
 // 管理员消息处理（回复转发 + 指令）
 // ============================================================================
 async function handleAdminMessage(msg, env, ctx, isEdit = false) {
-    // 仅允许管理员在群内操作与回信（v5.3 安全修复）
+    // 仅允许管理员在群内操作与回信
     const senderId = msg.from?.id;
     // GroupAnonymousBot(1087968824) 是匿名管理员身份：Telegram 仅允许群管理员匿名发言，直接放行
     const isAnonymousAdmin = senderId === 1087968824;
@@ -1558,7 +1505,7 @@ async function handleAdminMessage(msg, env, ctx, isEdit = false) {
     const text = (msg.text || "").trim();
     const threadId = msg.message_thread_id || null;
 
-    // 忽略无内容的服务消息（覆盖管理员可能用到的全部类型，避免贴纸/语音等被静默丢弃）
+    // 忽略无内容的服务消息
     const hasContent = msg.text || msg.photo || msg.video || msg.document || msg.audio || msg.animation ||
                        msg.sticker || msg.voice || msg.video_note || msg.location || msg.contact || msg.media_group_id;
     if (!hasContent) return;
@@ -1611,7 +1558,7 @@ async function handleAdminMessage(msg, env, ctx, isEdit = false) {
 
     // 编辑同步：管理员编辑了已回复的消息 → 就地修改用户收到的副本。
     // 文本消息改文字（editMessageText）；媒体消息改/补说明（editMessageCaption）。
-    // 编辑分支需先于相册分支：相册单条的编辑走映射同步，避免被当作新媒体组重新入队重发
+    // 编辑分支需先于相册分支：相册单条编辑走映射同步，避免被当新媒体组重发
     const adminEditHasMedia = Array.isArray(msg.photo) || !!msg.video || !!msg.document || !!msg.audio || !!msg.animation;
     if (isEdit && !msg.text && !adminEditHasMedia) return;
     if (isEdit) {
@@ -1677,7 +1624,7 @@ async function handleAdminMessage(msg, env, ctx, isEdit = false) {
     }
 }
 
-// /del 撤回：只撤回用户侧收到的副本（通过消息映射定位），群内原消息一律保留
+// /del：只撤回用户侧副本（按消息映射定位），群内原消息保留
 async function handleRetractMessage(msg, env) {
     const target = msg.reply_to_message;
 
@@ -1702,7 +1649,7 @@ async function handleRetractMessage(msg, env) {
 }
 
 // ============================================================================
-// 管理员指令（基础版指令集 + v5.3 增强 + 资料卡快捷指令）
+// 管理员指令（文本指令 + 资料卡快捷指令）
 // ============================================================================
 async function handleAdminCommand(text, userId, threadId, env) {
     if (!userId) {
@@ -1757,14 +1704,14 @@ async function execUserCommand(text, targetUserId, env, threadId = null) {
         };
     }
 
-    // /reset：重置验证状态（基础版）
+    // /reset：重置验证状态
     if (cmd === "/reset") {
         await setUserVerified(env, targetUserId, "", null);
         await deleteUserChallenges(env, targetUserId);
         return { text: `🔄 **用户 ${targetUserId} 的验证状态已重置**` };
     }
 
-    // /trust：永久信任（v5.3）
+    // /trust：永久信任
     if (cmd === "/trust") {
         await setUserVerified(env, targetUserId, "trusted", null);
         await kvDelete(env, `needs_verify:${targetUserId}`);
@@ -1772,7 +1719,7 @@ async function execUserCommand(text, targetUserId, env, threadId = null) {
         return { text: `🌟 **已设置永久信任**` };
     }
 
-    // /verify_ttl：设置验证有效期（基础版）
+    // /verify_ttl：设置验证有效期
     if (cmd === "/verify_ttl") {
         if (!arg) return { text: "❌ 格式：/verify_ttl 7d/30d/1y/永久" };
         const ttlMap = { "7d": 604800, "30d": 2592000, "1y": 31536000, "永久": 0 };
@@ -1796,7 +1743,7 @@ async function execUserCommand(text, targetUserId, env, threadId = null) {
         };
     }
 
-    // /close：关闭对话（v5.3：同时关闭论坛话题）
+    // /close：关闭对话（同时关闭论坛话题）
     if (cmd === "/close") {
         if (topicId) {
             const closeResult = await tgApiCall(env, "closeForumTopic", { chat_id: env.SUPERGROUP_ID, message_thread_id: topicId });
@@ -1839,7 +1786,7 @@ async function execUserCommand(text, targetUserId, env, threadId = null) {
 }
 
 // ============================================================================
-// 按钮回调：刷新验证链接（基础版）+ 一键屏蔽/解除屏蔽（自动置顶版）
+// 按钮回调：刷新验证链接+ 一键屏蔽/解除屏蔽
 // ============================================================================
 async function handleCallbackQuery(query, env, ctx) {
     try {
@@ -1918,13 +1865,12 @@ async function handleCallbackQuery(query, env, ctx) {
             return;
         }
 
-        // ---- 刷新验证链接（基础版） ----
+        // ---- 刷新验证链接 ----
         if (data.startsWith("refresh_verify:")) {
             const userId = query.from.id;
             const oldVerifyId = data.split(":")[1];
 
-            // 归属校验：回调必须来自私聊且挑战属于点击者本人，
-            // 防止拿到/转发他人验证按钮者删除别人的挑战或迁移别人的待发消息
+            // 归属校验：必须私聊且挑战属于点击者，防止借他人按钮动别人的挑战
             if (!query.message || String(query.message.chat.id) !== String(userId) || query.message.chat.type !== "private") {
                 await tgApiCall(env, "answerCallbackQuery", { callback_query_id: query.id, text: "⛔ 请在机器人私聊中使用该按钮" });
                 return;
@@ -1944,7 +1890,7 @@ async function handleCallbackQuery(query, env, ctx) {
             }
             const pendingIds = oldState.pending_ids;
 
-            // 先自查限流，通过才删旧挑战换新链接；失败时原挑战未动，原链接在过期前仍可使用
+            // 先自查限流，通过才删旧挑战换新链接
             const verifyLimit = await checkRateLimit(userId, env, "verify", CONFIG.RATE_LIMIT_VERIFY, CONFIG.RATE_LIMIT_VERIFY_WINDOW);
             if (!verifyLimit.allowed) {
                 await tgApiCall(env, "answerCallbackQuery", { callback_query_id: query.id, text: "⚠️ 验证请求过于频繁，原链接在过期前仍可使用", show_alert: true });
@@ -1960,8 +1906,7 @@ async function handleCallbackQuery(query, env, ctx) {
                     message_id: query.message?.message_id
                 }).catch((e) => Logger.warn("delete_old_verify_message_failed", { error: e?.message }));
             } else {
-                // 新链接下发失败：按旧 verifyId 重建挑战（暂存消息随之恢复），
-                // 保证用户手里的原链接在有效期内仍然可用
+                // 新链接下发失败：按旧 verifyId 重建挑战，原链接保持可用
                 Logger.warn("verify_refresh_send_failed_restore", { userId, verifyId: oldVerifyId });
                 await createChallenge(env, oldVerifyId, userId, pendingIds, CONFIG.VERIFY_EXPIRE_SECONDS);
                 await tgApiCall(env, "answerCallbackQuery", { callback_query_id: query.id, text: "⚠️ 新链接生成失败，请稍后重试（原链接仍可用）", show_alert: true });
@@ -1969,7 +1914,7 @@ async function handleCallbackQuery(query, env, ctx) {
             return;
         }
 
-        // ---- 一键屏蔽 / 解除屏蔽（自动置顶版） ----
+        // ---- 一键屏蔽 / 解除屏蔽 ----
         if (data.startsWith("block:") || data.startsWith("unblock:")) {
             const [action, targetUserId] = data.split(":");
             if (!targetUserId || isNaN(Number(targetUserId))) return;
@@ -2019,7 +1964,7 @@ async function handleCallbackQuery(query, env, ctx) {
 }
 
 // ============================================================================
-// Turnstile 验证模块（基础版 + v5.3 暂存补发）
+// Turnstile 验证模块（含暂存补发）
 // ============================================================================
 async function handleTurnstileVerify(request, env, ctx) {
     const url = new URL(request.url);
@@ -2033,7 +1978,7 @@ async function handleTurnstileVerify(request, env, ctx) {
         });
     }
 
-    // GET：返回验证页面（基础版）
+    // GET：返回验证页面
     if (request.method === "GET") {
         const verifyState = await getChallenge(env, verifyId);
         if (!verifyState) {
@@ -2047,7 +1992,7 @@ async function handleTurnstileVerify(request, env, ctx) {
         });
     }
 
-    // POST：处理验证提交（基础版 + v5.3 暂存补发）
+    // POST：处理验证提交
     if (request.method === "POST") {
         try {
             const { token } = await request.json();
@@ -2089,23 +2034,18 @@ async function handleTurnstileVerify(request, env, ctx) {
                 }), { status: 403, headers: { "Content-Type": "application/json" } });
             }
 
-            // 标记已验证（默认 7 天，可用 /verify_ttl 或 /trust 调整）；
-            // 已是 trusted/更长有效期则不降级覆盖
+            // 标记已验证（默认 7 天）；已是 trusted 则不降级覆盖
             const isTrusted = currentUser?.verified === "trusted";
             if (!isTrusted) {
                 await setUserVerified(env, userId, "1", nowSec() + CONFIG.VERIFIED_EXPIRE_SECONDS);
             }
             await kvDelete(env, `needs_verify:${userId}`);
 
-            // 暂不删除验证挑战：补发过程中失败的项目必须保留，后续才能重试。
-            // 全部成功后再清理 challenge。
+            // 暂不删 challenge：补发失败项需保留重试，全部成功后由后台任务清理。
 
-            // 补发验证期间暂存的消息（v5.3，最多 PENDING_MAX_MESSAGES 条）。
-            // 整个补发（建话题 + 逐条 AI 补检 + 逐条转发）耗时可达十几秒，
-            // 全部放在响应前会让用户在验证页干等——这里只做"验证状态落库"
-            // （上面两行已即时生效），补发放进 waitUntil 后台执行：
-            // 页面立即返回成功，Telegram 端消息随后陆续送达。
-            // resend_lock 防止用户狂点验证按钮导致补发并发重复
+            // 补发验证期间暂存的消息（最多 PENDING_MAX_MESSAGES 条）。
+            // 补发（建话题+AI补检+逐条转发）耗时可达十几秒，放进 waitUntil 后台执行：
+            // 页面立即返回成功；resend_lock 防止狂点验证按钮导致补发并发重复
             const pendingIds = (Array.isArray(state.pending_ids) ? state.pending_ids : [])
                 .slice(-CONFIG.PENDING_MAX_MESSAGES);
 
@@ -2122,7 +2062,7 @@ async function handleTurnstileVerify(request, env, ctx) {
                     await runPendingForward(env, userId, verifyId, pendingIds, lockKey, lockOwner);
                 }
             } else if (pendingIds.length) {
-                // 拿不到锁：说明另一份补发正在进行，本轮直接放行（challenge 保留由后台任务处理）
+                // 拿不到锁：另一份补发正在进行，本轮放行
                 Logger.info("pending_forward_lock_busy", { userId });
             } else {
                 await deleteChallenge(env, verifyId);
@@ -2172,7 +2112,7 @@ async function runPendingForward(env, userId, verifyId, pendingIds, lockKey, loc
 
         for (const item of pendingIds) {
             if (!item || !item.id) continue;
-            // 补发中途触发自动封禁则终止：被封用户的剩余消息不再送进话题
+            // 补发中途触发自动封禁则终止
             const currentRec = await getUser(env, userId);
             if (!currentRec || currentRec.banned) {
                 Logger.warn("pending_forward_aborted_banned", { userId, remaining: pendingIds.length - unresolvedPending.length });
@@ -2211,9 +2151,7 @@ async function runPendingForward(env, userId, verifyId, pendingIds, lockKey, loc
                     continue;
                 }
             }
-            // 补发带原文本：文本消息走与正常路径一致的 copy 分支（副本可被编辑同步），
-            // 媒体消息 text 为空、走 forward 分支按原消息 ID 转发。
-            // 后台任务无请求 ctx，传 null（forwardToTopic 内部对 ctx 做了空值兼容）
+            // 文本走 copy 分支（可编辑同步）；媒体走 forward 分支（后台无 ctx，已兼容）
             const fakeMsg = { message_id: item.id, chat: { id: userId, type: "private" }, from, text: item.text || undefined };
             const forwardResult = await forwardToTopic(fakeMsg, env, null, false);
             if (forwardResult?.ok === true) {
@@ -2253,16 +2191,15 @@ async function runPendingForward(env, userId, verifyId, pendingIds, lockKey, loc
 }
 
 // ============================================================================
-// 验证链接下发（基础版 Turnstile + v5.3 暂存/限速/去重）
+// 验证链接下发（Turnstile + 暂存/限速/去重）
 // ============================================================================
 async function sendVerifyMessage(userId, env, pendingIds = [], opts = {}) {
     // 统一暂存条目格式（兼容旧纯数字 ID 数组），携带文本供验证通过后 AI 补检
     const items = (Array.isArray(pendingIds) ? pendingIds : [])
         .map(it => (it && typeof it === "object") ? { id: it.id, text: it.text || "" } : { id: it, text: "" })
         .filter(it => it && it.id);
-    // 已有进行中的验证：把新消息加入暂存队列，并重发一次带按钮的验证消息。
-    // 只静默续期会造成死锁：原验证消息 5 分钟后被自动撤回，按钮随之消失，
-    // 而挑战仍在续期——用户持续发消息却永远收不到链接。重发受 verify 限流保护，不会刷屏
+    // 已有进行中的验证：并入暂存队列并重发验证消息（只静默续期会死锁：原消息已撤回、
+    // 按钮消失、挑战却一直续期）；重发受 verify 限流保护
     const active = await getActiveChallenge(env, userId);
     if (active) {
         if (items.length) {
@@ -2296,7 +2233,7 @@ async function sendVerifyMessage(userId, env, pendingIds = [], opts = {}) {
         return "exists";
     }
 
-    // 验证请求速率限制（v5.3）；refresh_verify 已自查过限流时传 skipRateLimit 避免重复计数。
+    // 验证请求速率限制；refresh_verify 已自查过限流时传 skipRateLimit 避免重复计数。
     // 限流不允许下发新链接，但消息本身不丢弃：并入现有挑战（无挑战则先建一个），验证通过后照常补达
     if (!opts.skipRateLimit) {
         const verifyLimit = await checkRateLimit(userId, env, "verify", CONFIG.RATE_LIMIT_VERIFY, CONFIG.RATE_LIMIT_VERIFY_WINDOW);
@@ -2324,10 +2261,10 @@ async function sendVerifyMessage(userId, env, pendingIds = [], opts = {}) {
         }
     }
 
-    // 清理该用户旧的验证挑战（基础版）
+    // 清理该用户旧的验证挑战
     await deleteUserChallenges(env, userId);
 
-    // 生成新验证链接（加密安全随机 ID，v5.3）
+    // 生成新验证链接（加密安全随机 ID）
     const newVerifyId = secureRandomId(CONFIG.VERIFY_ID_LENGTH);
     const newPending = items.slice(-CONFIG.PENDING_MAX_MESSAGES);
     await createChallenge(env, newVerifyId, userId, newPending, CONFIG.VERIFY_EXPIRE_SECONDS);
@@ -2371,12 +2308,12 @@ async function sendVerifyMessage(userId, env, pendingIds = [], opts = {}) {
     await scheduleAutoDelete(env, userId, verifyMsg.result?.message_id,
         autoDeleteSeconds(env.AUTO_DELETE_VERIFY, CONFIG.AUTO_DELETE_VERIFY_SECONDS));
 
-    // 返回结果供调用方区分：sent=新链接已下发 / exists=原验证仍有效 / false=限流或发送失败
+    // 返回：sent=新链接已下发 / exists=原验证仍有效 / false=限流或发送失败
     return "sent";
 }
 
 // ============================================================================
-// 话题创建（自动置顶版风格：标题不含 ID + 用户资料卡 + 一键屏蔽按钮）
+// 话题创建（标题不含 ID + 用户资料卡 + 一键屏蔽按钮）
 // ============================================================================
 // 跨实例建话题锁：D1 条件 upsert 原子抢占（同 claimWebhookUpdate 模式），
 // 避免多个 Worker 实例并发为同一用户各建一个话题（isolate 内 Map 挡不住跨实例）
@@ -2421,12 +2358,12 @@ async function getOrCreateUserTopic(from, env, userId) {
     const existing = await getUser(env, userId);
     if (existing && existing.thread_id) return existing;
 
-    // 实例内并发去重（v5.3）
+    // 实例内并发去重
     const inflight = topicCreateInFlight.get(String(userId));
     if (inflight) return await inflight;
 
     const p = (async () => {
-        // 并发下二次确认，避免已被其他请求创建却读到旧值（v5.3）
+        // 并发下二次确认，避免已被其他请求创建却读到旧值
         const again = await getUser(env, userId);
         if (again && again.thread_id) return again;
 
@@ -2467,7 +2404,7 @@ async function getOrCreateUserTopic(from, env, userId) {
 
 async function createUserTopic(from, env, userId) {
     const f = from || { id: userId, first_name: "User" };
-    // 话题标题不含用户 ID（按要求，来自自动置顶版 + v5.3 字符清洗）
+    // 话题标题不含用户 ID（按要求，含字符清洗）
     const title = buildTopicTitle(f);
 
     const res = await tgApiCall(env, "createForumTopic", {
@@ -2479,7 +2416,7 @@ async function createUserTopic(from, env, userId) {
 
     const threadId = res.result.message_thread_id;
 
-    // 写入用户行（已有记录则补全话题信息，保留验证/封禁/拦截计数不变）
+    // 写入用户行（已有记录则只补话题信息）
     await env.DB.prepare(
         `INSERT INTO users (user_id, thread_id, name, username, first_ts)
          VALUES (?1, ?2, ?3, ?4, ?5)
@@ -2490,7 +2427,7 @@ async function createUserTopic(from, env, userId) {
            first_ts = COALESCE(users.first_ts, excluded.first_ts)`
     ).bind(userId, threadId, buildUserName(f), f.username || "", Math.floor(Date.now() / 1000)).run();
 
-    // 用户资料卡（状态面板 + 管理按钮，后续操作就地刷新本卡片）
+    // 用户资料卡（后续管理操作就地刷新本卡片）
     const rec = await getUser(env, userId);
     const card = await tgApiCall(env, "sendMessage", withMessageThreadId({
         chat_id: env.SUPERGROUP_ID,
@@ -2511,7 +2448,7 @@ async function createUserTopic(from, env, userId) {
     }
 
     Logger.info("topic_created", { userId, threadId, title });
-    // 极端竞态下读取失败也返回已建话题信息，避免上层误报“创建失败”
+    // 读库失败也返回已建话题信息，避免上层误报创建失败
     return rec || {
         user_id: userId,
         thread_id: threadId,
@@ -2526,7 +2463,7 @@ async function createUserTopic(from, env, userId) {
     };
 }
 
-// 话题标题：仅用户昵称（不含 ID），清理控制字符（v5.3 清洗 + 自动置顶版格式）
+// 话题标题：仅用户昵称（不含 ID），清理控制字符
 function buildTopicTitle(from) {
     const firstName = (from.first_name || "").trim().substring(0, CONFIG.MAX_NAME_LENGTH);
     const lastName = (from.last_name || "").trim().substring(0, CONFIG.MAX_NAME_LENGTH);
@@ -2690,7 +2627,7 @@ async function getUserIdByTopicId(threadId, env) {
     return rec ? rec.user_id : null;
 }
 
-// 话题手动关闭/重开事件同步状态（v5.3）
+// 话题手动关闭/重开事件同步状态
 async function updateThreadStatus(threadId, isClosed, env) {
     try {
         await ensureSchema(env);
@@ -2702,9 +2639,9 @@ async function updateThreadStatus(threadId, isClosed, env) {
     }
 }
 
-// 话题丢失后的重置：要求重新人机验证（v5.3）
+// 话题丢失后的重置：要求重新人机验证
 async function resetUserVerificationAndRequireReverify(env, { userId, oldThreadId, pendingMsgId, reason }) {
-    // 只有仍绑定旧话题时才清空，避免并发请求把已经创建的新话题解绑。
+    // 仅当仍绑定旧话题时才清空，避免并发请求解绑新话题。
     if (oldThreadId !== undefined && oldThreadId !== null) {
         await clearUserThreadIfMatches(env, userId, oldThreadId);
     }
@@ -2717,7 +2654,7 @@ async function resetUserVerificationAndRequireReverify(env, { userId, oldThreadI
     await sendVerifyMessage(userId, env, pendingMsgId ? [{ id: pendingMsgId, text: "" }] : [], { skipRateLimit: true });
 }
 
-// 话题健康探测：发送🔎探针并删除，识别丢失/重定向（v5.3）
+// 话题健康探测：发送🔎探针并删除，识别丢失/重定向
 async function probeForumThread(env, expectedThreadId, { userId, reason, doubleCheckOnMissingThreadId = true } = {}) {
     const attemptOnce = async () => {
         const res = await tgApiCall(env, "sendMessage", {
@@ -2730,7 +2667,7 @@ async function probeForumThread(env, expectedThreadId, { userId, reason, doubleC
         const actualThreadId = res.result?.message_thread_id;
         const probeMessageId = res.result?.message_id;
 
-        // 尽可能清理探测消息（无论落到哪个话题/General）
+        // 清理探测消息
         if (res.ok && probeMessageId) {
             await tgApiCall(env, "deleteMessage", {
                 chat_id: env.SUPERGROUP_ID,
@@ -2748,7 +2685,7 @@ async function probeForumThread(env, expectedThreadId, { userId, reason, doubleC
             return { status: "unknown_error", description: res.description };
         }
 
-        // 有些情况下 Telegram 会返回 ok 但不带 message_thread_id（常见于 General）
+        // Telegram 偶尔返回 ok 但不带 thread_id（消息落 General）
         if (actualThreadId === undefined || actualThreadId === null) {
             return { status: "missing_thread_id" };
         }
@@ -2761,7 +2698,7 @@ async function probeForumThread(env, expectedThreadId, { userId, reason, doubleC
     const first = await attemptOnce();
     if (first.status !== "missing_thread_id" || !doubleCheckOnMissingThreadId) return first;
 
-    // 二次探测：避免偶发字段缺失导致误判并触发重建（v5.3）
+    // 二次探测：避免偶发字段缺失误判
     const second = await attemptOnce();
     if (second.status === "missing_thread_id") {
         Logger.warn("thread_probe_missing_thread_id", { userId, expectedThreadId, reason });
@@ -2799,7 +2736,7 @@ function isTestMessageInvalid(description) {
 }
 
 // ============================================================================
-// 媒体组处理（v5.3：photo/video/document/audio/animation + 表情反馈来自基础版）
+// 媒体组处理（photo/video/document/audio/animation + 表情反馈）
 // ============================================================================
 async function handleMediaGroup(msg, env, ctx, { direction, targetChat, threadId }) {
     const groupId = msg.media_group_id;
@@ -2821,11 +2758,11 @@ async function handleMediaGroup(msg, env, ctx, { direction, targetChat, threadId
     const meta = { targetChat, srcChat: msg.chat.id, threadId: (threadId === null ? undefined : threadId), ts };
     await mgItemPut(env, direction, groupId, msg.message_id, meta, item, CONFIG.MEDIA_GROUP_EXPIRE_SECONDS);
 
-    // 延迟聚合发送（v5.3）
+    // 延迟聚合发送
     ctx.waitUntil(delaySend(env, direction, groupId, ts, ctx));
 }
 
-// 媒体提取（v5.3：不改原数组，取最高分辨率）
+// 媒体提取：不改原数组，取最高分辨率
 function extractMedia(msg) {
     if (msg.photo && msg.photo.length > 0) {
         const highestResolution = msg.photo[msg.photo.length - 1];
@@ -2844,7 +2781,7 @@ function extractMedia(msg) {
     return null;
 }
 
-// 媒体组延迟发送 + 表情反馈（v5.3 + 基础版表情）
+// 媒体组延迟发送
 // ts 仅用于识别"还有更新到达"：每次消息入队会带新的 Date.now() 触发新一轮 delaySend，
 // 只有一轮等待期内没有新消息（ts 仍是自己传入值对应的最新一轮）才执行发送
 async function delaySend(env, direction, groupId, ts, ctx, delayMs = CONFIG.MEDIA_GROUP_DELAY_MS, retryCount = 0) {
@@ -2945,7 +2882,7 @@ async function delaySend(env, direction, groupId, ts, ctx, delayMs = CONFIG.MEDI
 // （过期媒体组缓存清理已并入 sweepExpired()：单条 DELETE 清掉所有表的过期行）
 
 // ============================================================================
-// 统一表情设置（仅用于给用户编辑过的消息加常驻 🦄 标记；旧版 🕊 已读/切换路径已移除）
+// 给用户编辑过的消息加常驻 🦄 标记
 // ============================================================================
 async function setUnifiedReaction(env, chatId, messageId) {
     // 熔断期内直接跳过（该会话的反应已被 Telegram 拒绝过）
@@ -2999,7 +2936,7 @@ async function setUnifiedReaction(env, chatId, messageId) {
 }
 
 // ============================================================================
-// /cleanup 批量清理（v5.3）
+// /cleanup 批量清理
 // ============================================================================
 async function handleCleanupCommand(threadId, env) {
     const lockKey = "cleanup:lock";
@@ -3083,7 +3020,7 @@ async function handleCleanupCommand(threadId, env) {
                         probe = { status: "missing", description: "探针成功但无 thread_id（消息落入 General，话题已失效）" };
                     }
 
-                    // 仅在明确缺失/重定向时清理，避免误删（v5.3）
+                    // 仅在明确缺失/重定向时清理，避免误删
                     if (probe.status === "redirected" || probe.status === "missing") {
                         await env.DB.prepare("DELETE FROM users WHERE user_id = ?1").bind(row.user_id).run();
                         // 连同全部消息记录一起清除，对该用户如同从未私聊过
@@ -3114,7 +3051,7 @@ async function handleCleanupCommand(threadId, env) {
                 }
             });
 
-            // 防止速率限制（v5.3）
+            // 防止速率限制
             if (i + CONFIG.CLEANUP_BATCH_SIZE < rows.length) {
                 await new Promise(r => setTimeout(r, 600));
             }
@@ -3176,7 +3113,7 @@ async function handleCleanupCommand(threadId, env) {
 }
 
 // ============================================================================
-// 管理员鉴权（v5.3）
+// 管理员鉴权
 // ============================================================================
 function parseAdminIdAllowlist(env) {
     const raw = (env.ADMIN_IDS || "").toString().trim();
@@ -3234,18 +3171,12 @@ async function isAdminUser(env, userId) {
 // 通用工具函数
 // ============================================================================
 
-// （safeGetJSON / checkRateLimit / getAllKeys 已由 D1 存储层的对应实现取代）
-
 function secureRandomId(length = 12) {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     const bytes = new Uint8Array(length);
     crypto.getRandomValues(bytes);
     return Array.from(bytes).map(b => chars[b % chars.length]).join("");
 }
-
-// （速率限制见存储层 checkRateLimit：D1 原子 UPSERT）
-
-// （获取所有 KV keys 见 getAllKeys 已移除，改用 SQL 直查）
 
 function withMessageThreadId(body, threadId) {
     if (threadId === undefined || threadId === null) return body;
@@ -3260,7 +3191,7 @@ async function deleteCommandMessage(msg, env) {
     });
 }
 
-// HTML 转义（自动置顶版）
+// HTML 转义
 function escapeHtml(text) {
     if (!text) return "";
     return text.toString()
@@ -3269,11 +3200,11 @@ function escapeHtml(text) {
         .replace(/>/g, "&gt;");
 }
 
-// Telegram API 调用（基础版 + v5.3 超时/HTTPS 强制/限速日志）
+// Telegram API 调用（超时/HTTPS 强制/限速日志）
 async function tgApiCall(env, method, body, timeout = CONFIG.API_TIMEOUT_MS) {
     let base = env.API_BASE || "https://api.telegram.org";
 
-    // 强制 HTTPS（v5.3）
+    // 强制 HTTPS
     if (base.startsWith("http://")) {
         Logger.warn("api_http_upgraded", { originalBase: base });
         base = base.replace("http://", "https://");
@@ -3331,7 +3262,7 @@ function isTimeoutResult(res) {
 }
 
 // ============================================================================
-// Turnstile 验证页面（基础版，原样保留）
+// Turnstile 验证页面
 // ============================================================================
 
 // 生成过期/无效链接页面
