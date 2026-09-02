@@ -86,20 +86,20 @@ function main(config) {
    */
   config["proxy-groups"] = [
     { name: "Proxy", type: "select", proxies: ["自动选择", "香港", "日本", "美国", "台湾", "新加坡", "韩国", "欧盟地区"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Global.png" },
-    { name: "自动选择", type: "url-test", url: "http://www.gstatic.com/generate_204", interval: 300, tolerance: 50, proxies: validProxies.length > 0 ? validProxies : ["DIRECT"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Speedtest.png" },
+    { name: "自动选择", type: "url-test", url: "http://www.apple.com/library/test/success.html", interval: 60, tolerance: 50, lazy: false, proxies: validProxies.length > 0 ? validProxies : ["DIRECT"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Speedtest.png" },
     { name: "Emby", type: "select", proxies: ["DIRECT", "自动选择", "香港", "新加坡", "美国"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Apple_TV.png" },
     { name: "人工智能", type: "select", proxies: ["美国", "日本", "新加坡", "台湾", "欧盟地区", "Proxy"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/ChatGPT.png" },
     { name: "国际媒体", type: "select", proxies: ["Proxy", "香港", "日本", "美国", "台湾", "欧盟地区"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Streaming.png" },
     { name: "Telegram", type: "select", proxies: ["Proxy", "新加坡", "香港", "欧盟地区"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Telegram.png" },
     { name: "微软服务", type: "select", proxies: ["DIRECT", "Proxy", "自动选择"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Microsoft.png" },
 
-    { name: "香港", type: "url-test", proxies: getProxies(/(香港|HK|Hong Kong)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Hong_Kong.png" },
-    { name: "日本", type: "url-test", proxies: getProxies(/(日本|JP|Japan|Tokyo|Osaka)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Japan.png" },
-    { name: "美国", type: "url-test", proxies: getProxies(/(美国|US|United States|America)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/United_States.png" },
-    { name: "台湾", type: "url-test", proxies: getProxies(/(台湾|TW|Taiwan|Taipei)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Taiwan.png" },
-    { name: "新加坡", type: "url-test", proxies: getProxies(/(新加坡|SG|Singapore|Lion)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Singapore.png" },
-    { name: "韩国", type: "url-test", proxies: getProxies(/(韩国|KR|Korea|Seoul)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Korea.png" },
-    { name: "欧盟地区", type: "url-test", proxies: getProxies(/(英国|UK|GB|英|法|FR|德|DE|意|IT|荷兰|NL|欧|EU)/i), interval: 300, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/European_Union.png" }
+    { name: "香港", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(香港|HK|Hong Kong)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Hong_Kong.png" },
+    { name: "日本", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(日本|JP|Japan|Tokyo|Osaka)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Japan.png" },
+    { name: "美国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(美国|US|United States|America)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/United_States.png" },
+    { name: "台湾", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(台湾|TW|Taiwan|Taipei)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Taiwan.png" },
+    { name: "新加坡", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(新加坡|SG|Singapore|Lion)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Singapore.png" },
+    { name: "韩国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(韩国|KR|Korea|Seoul)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Korea.png" },
+    { name: "欧盟地区", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(英国|UK|GB|英|法|FR|德|DE|意|IT|荷兰|NL|欧|EU)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/European_Union.png" }
   ];
 
     /**
