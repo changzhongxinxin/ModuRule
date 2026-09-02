@@ -3,15 +3,14 @@ function main(config) {
    * 1. 注入懒人基础网络配置 (修复 proxy-server-nameserver 错误 + DNS 兜底)
    */
   const baseSettings = {
-    "bind-address": "*",
+    "bind-address": "127.0.0.1",
     "unified-delay": true,
     "tcp-concurrent": true,
-    "find-process-mode": "strict",
     "profile": { "store-selected": true, "store-fake-ip": true },
     "sniffer": {
       "enable": true,
       "sniff": {
-        "HTTP": { "ports": [80, "8080-8880"], "override-destination": true },
+        "HTTP": { "ports": [80, "8080-8880"] },
         "TLS": { "ports": [443, 8443] },
         "QUIC": { "ports": [443, 8443] }
       },
@@ -27,13 +26,12 @@ function main(config) {
       "stack": "mixed",
       "dns-hijack": ["any:53", "tcp://any:53"],
       "auto-route": true,
-      "auto-redirect": true,
       "auto-detect-interface": true
     },
     "dns": {
       "enable": true,
-      "listen": "0.0.0.0:1053",
-      "ipv6": true,
+      "listen": "127.0.0.1:1053",
+      "ipv6": false,
       "enhanced-mode": "fake-ip",
       "fake-ip-range": "198.18.0.1/16",
       "respect-rules": true,
@@ -42,20 +40,16 @@ function main(config) {
         "+.stun.*", "*.*.xboxlive.com", "+.microsoft.com", "+.msftncsi.com",
         "+.srv.nintendo.net", "+.stun.playstation.net", "+.turn.twilio.com"
       ],
-      // 兜底：纯 IP，确保首次启动/DoH 异常时仍能解析
-      "default-nameserver": ["223.5.5.5", "114.114.114.114"],
-      // 代理服务器域名解析专用
-      "proxy-server-nameserver": [
+      // 仅用于解析 DoH 服务器的 IP，不参与正常域名解析（必须为明文 IP）
+      "default-nameserver": ["223.5.5.5", "119.29.29.29"],
+      "nameserver": [
         "https://223.5.5.5/dns-query",
         "https://119.29.29.29/dns-query"
       ],
-      "nameserver": [
-        "https://223.5.5.5/dns-query", 
+      "proxy-server-nameserver": [
+        "https://223.5.5.5/dns-query",
         "https://119.29.29.29/dns-query"
-      ],
-      // 兜底 fallback：当上游异常时回退到国际 DNS
-      "fallback": ["https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"],
-      "fallback-filter": { "geoip": false, "geoip-code": "CN", "ipcidr": ["240.0.0.0/4"] }
+      ]
     }
   };
 
@@ -93,13 +87,13 @@ function main(config) {
     { name: "Telegram", type: "select", proxies: ["Proxy", "新加坡", "香港", "欧盟地区"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Telegram.png" },
     { name: "微软服务", type: "select", proxies: ["DIRECT", "Proxy", "自动选择"], icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Microsoft.png" },
 
-    { name: "香港", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(香港|HK|Hong Kong)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Hong_Kong.png" },
-    { name: "日本", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(日本|JP|Japan|Tokyo|Osaka)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Japan.png" },
-    { name: "美国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(美国|US|United States|America)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/United_States.png" },
-    { name: "台湾", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(台湾|TW|Taiwan|Taipei)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Taiwan.png" },
-    { name: "新加坡", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(新加坡|SG|Singapore|Lion)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Singapore.png" },
-    { name: "韩国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(韩国|KR|Korea|Seoul)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Korea.png" },
-    { name: "欧盟地区", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(英国|UK|GB|英|法|FR|德|DE|意|IT|荷兰|NL|欧|EU)/i), interval: 60, tolerance: 50, lazy: false, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/European_Union.png" }
+    { name: "香港", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(香港|HK|Hong Kong)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Hong_Kong.png" },
+    { name: "日本", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(日本|JP|Japan|Tokyo|Osaka)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Japan.png" },
+    { name: "美国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(美国|US|United States|America)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/United_States.png" },
+    { name: "台湾", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(台湾|TW|Taiwan|Taipei)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Taiwan.png" },
+    { name: "新加坡", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(新加坡|SG|Singapore|Lion)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Singapore.png" },
+    { name: "韩国", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(韩国|KR|Korea|Seoul)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Korea.png" },
+    { name: "欧盟地区", type: "url-test", url: "http://www.apple.com/library/test/success.html", proxies: getProxies(/(英国|UK|GB|英|法|FR|德|DE|意|IT|荷兰|NL|欧|EU)/i), interval: 180, tolerance: 50, icon: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/European_Union.png" }
   ];
 
     /**
@@ -129,9 +123,9 @@ function main(config) {
 	"DOMAIN-SUFFIX,emby.wtf,新加坡",
   "DOMAIN-SUFFIX,linux.do,新加坡",
 	//订阅规则
+    "RULE-SET,直连,DIRECT",
     "RULE-SET,reject,REJECT",
     "RULE-SET,china,DIRECT",
-    "RULE-SET,直连,DIRECT",
     "RULE-SET,Emby,Emby",
     "RULE-SET,ai,人工智能",
     "RULE-SET,globalmedia,国际媒体",
