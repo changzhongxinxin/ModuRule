@@ -63,8 +63,13 @@ function parseArgs(str) {
   }
 }
 
+function normalizeHost(h) {
+  // 容错：去掉误带的 https:// 前缀和路径部分，只保留纯域名
+  return String(h || "").trim().replace(/^https?:\/\//i, "").split("/")[0].trim();
+}
+
 function splitList(str) {
-  return String(str || "").split(",").map(s => s.trim()).filter(Boolean);
+  return String(str || "").split(",").map(s => normalizeHost(s)).filter(Boolean);
 }
 
 function notifyTitleForHost(host) {
