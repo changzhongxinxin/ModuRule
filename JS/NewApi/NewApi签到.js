@@ -1,12 +1,20 @@
 /******************************
-NewAPI 通用签到 - 定时执行脚本
-适配新版 new-api 鉴权：
-  1. 访问令牌 PAT（个人设置生成，长期有效）
-  2. /api/user/auth/refresh 的 new_api_refresh Cookie（约30天，
-     每次刷新会轮换，脚本会自动回存新 Cookie）
-  3. 旧版站点 Cookie + new-api-user
+NewAPI 通用签到 - 定时执行脚本（令牌直填版）
 更新时间：2026-09-06
-作者：Linsar
+
+使用方法：
+1. 在站点 个人中心 → 安全 → 访问令牌 生成令牌（只显示一次，复制保存）
+2. 按所在平台二选一配置：
+   · Egern：给脚本添加两个环境变量
+       host  = api.afsmc.cn
+       token = 粘贴令牌
+   · Surge / Loon：argument 填 host=api.afsmc.cn&token=粘贴令牌
+   多站点时用英文逗号列出并按顺序一一对应：
+   host=域名1,域名2 / token=令牌1,令牌2
+3. 手动运行一次本脚本测试；之后每天定时自动签到
+
+注意：这里要填的是"访问令牌"（个人中心生成的随机串，长期有效），
+不是网页登录产生的短期 JWT（15 分钟即过期，脚本检测到会提示）。
 *******************************/
 
 // ============================================
@@ -16,6 +24,27 @@ function safeJsonParse(str) {
   try { return JSON.parse(str); } catch (_) { return null; }
 }
 
+// ============================================
+// 读取配置：Egern 环境变量优先，其次 argument（Surge/Loon）
+// ============================================
+function getConfig() {
+  // Egern：脚本设置中的环境变量直接挂在 $env 下
+  if (typeof $env !== "undefined" && $env && typeof $env === "object") {
+    if ($env.host !== undefined || $env.token !== undefined) {
+      return { host: String($env.host ?? ""), token: String($env.token ?? "") };
+    }
+    if ($env._compat && $env._compat.$argument !== undefined) {
+      return parseArgs($env._compat.$argument);
+    }
+  }
+  // Surge / Loon：argument 参数
+  if (typeof $argument !== "undefined") {
+    return parseArgs($argument);
+  }
+  return {};
+}
+
+// 支持 host=xx&token=yy 形式，也兼容 JSON
 function parseArgs(str) {
   const out = {};
   if (!str) return out;
@@ -23,30 +52,19 @@ function parseArgs(str) {
     const parsed = JSON.parse(str);
     return typeof parsed === "object" ? parsed : {};
   } catch (_) {
-    for (const part of String(str).trim().split(/&|,/)) {
+    for (const part of String(str).trim().split("&")) {
       const seg = part.trim();
       if (!seg) continue;
       const idx = seg.indexOf("=");
-      if (idx === -1) {
-        out[decodeURIComponent(seg)] = "";
-      } else {
-        out[decodeURIComponent(seg.slice(0, idx))] = decodeURIComponent(seg.slice(idx + 1));
-      }
+      if (idx === -1) continue;
+      out[decodeURIComponent(seg.slice(0, idx)).trim()] = decodeURIComponent(seg.slice(idx + 1)).trim();
     }
     return out;
   }
 }
 
-// 所有站点的凭据统一存在这一个 key 下：{ "站点域名": {请求头字段...}, ... }
-const DATA_KEY = "UniversalCheckin";
-
-function readData() {
-  const parsed = safeJsonParse(readStore(DATA_KEY));
-  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-}
-
-function writeData(data) {
-  return writeStore(DATA_KEY, JSON.stringify(data));
+function splitList(str) {
+  return String(str || "").split(",").map(s => s.trim()).filter(Boolean);
 }
 
 function notifyTitleForHost(host) {
@@ -59,52 +77,9 @@ function notifyTitleForHost(host) {
   } catch (_) { return host; }
 }
 
-function originFromHost(host) {
-  return `https://${host}`;
-}
-
+// 网页登录产生的短期 access token 是 JWT；个人中心生成的访问令牌是普通随机串
 function isJwtToken(str) {
   return /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(String(str || "").trim());
-}
-
-function readStore(key) {
-  if (typeof $persistentStore !== "undefined") return $persistentStore.read(key);
-  if (typeof $memory !== "undefined") return $memory.read(key);
-  if (typeof $data !== "undefined") return $data.read(key);
-  return null;
-}
-
-function writeStore(key, value) {
-  if (typeof $persistentStore !== "undefined") return $persistentStore.write(value, key);
-  if (typeof $memory !== "undefined") return $memory.write(value, key);
-  if (typeof $data !== "undefined") return $data.write(value, key);
-  return false;
-}
-
-// new-api 每次刷新会轮换 new_api_refresh，只替换该键，保留同串里的 WAF Cookie
-function replaceRefreshCookie(cookieStr, newValue) {
-  const parts = String(cookieStr).split(";").map(s => s.trim()).filter(Boolean);
-  let replaced = false;
-  const out = parts.map(p => {
-    if (p.indexOf("new_api_refresh=") === 0) {
-      replaced = true;
-      return `new_api_refresh=${newValue}`;
-    }
-    return p;
-  });
-  if (!replaced) out.push(`new_api_refresh=${newValue}`);
-  return out.join("; ");
-}
-
-function getSetCookie(resp) {
-  const h = (resp && resp.headers) || {};
-  for (const k of Object.keys(h)) {
-    if (k.toLowerCase() === "set-cookie") {
-      const v = h[k];
-      return Array.isArray(v) ? v.join(", ") : String(v);
-    }
-  }
-  return "";
 }
 
 // new-api 额度默认 500000 = $1
@@ -114,148 +89,47 @@ function formatQuota(q) {
   return `${q}（≈$${(n / 500000).toFixed(2)}）`;
 }
 
-// Surge/Egern 脚本响应可能不解压 zstd，请求头里去掉它避免拿到解不开的响应体
-function safeAcceptEncoding(value) {
-  const cleaned = String(value || "").replace(/,?\s*zstd/gi, "").replace(/^,|,$/g, "").trim();
-  return cleaned || "gzip, deflate, br";
-}
-
 // ============================================
-// 获取保存的站点列表（即统一存储的顶层键）
+// 解析 argument：host 与 token 按逗号顺序一一对应
 // ============================================
-function getSavedHosts() {
-  const data = readData();
-  return Object.keys(data).filter(h => h && typeof data[h] === "object");
-}
-
-// ============================================
-// 新版：用 refresh Cookie 换取短期 access token
-// ============================================
-function refreshSession(host, saved) {
-  return new Promise((resolve) => {
-    const url = `${originFromHost(host)}/api/user/auth/refresh`;
-    const headers = {
-      "Accept": "application/json, text/plain, */*",
-      "User-Agent": saved["User-Agent"] || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
-      "Origin": saved.Origin || originFromHost(host),
-      "Referer": saved.Referer || `${originFromHost(host)}/`,
-      "Accept-Encoding": safeAcceptEncoding(saved["Accept-Encoding"]),
-      "Cookie": saved.Cookie || ""
-    };
-
-    const startTime = new Date().getTime();
-    $httpClient.post({ url, headers, body: "" }, (err, resp, body) => {
-      const latency = new Date().getTime() - startTime;
-      if (err) {
-        resolve({ ok: false, msg: `网络错误: ${err}` });
-        return;
-      }
-      const status = (resp && resp.status) || 0;
-      const obj = safeJsonParse(body || "") || {};
-      const token = obj && obj.data && obj.data.access_token;
-      console.log(`[NewAPI] 刷新会话 | HTTP ${status} | ${latency}ms`);
-
-      if (status === 200 && obj.success && token) {
-        // 轮换后的新 Cookie 必须回存，否则旧 Cookie 下次即失效
-        let newCookie = "";
-        const m = getSetCookie(resp).match(/new_api_refresh=([^;\s,]+)/);
-        if (m && m[1]) {
-          newCookie = replaceRefreshCookie(saved.Cookie || "", m[1]);
-        } else {
-          console.log("[NewAPI] 刷新会话 | 响应中未找到轮换的新 Cookie，沿用旧值");
-        }
-        resolve({ ok: true, token, newCookie });
-        return;
-      }
-
-      if (status === 401 || status === 403) {
-        resolve({ ok: false, expired: true, msg: `HTTP ${status}，登录会话已失效（约30天有效期）` });
-        return;
-      }
-      resolve({ ok: false, msg: `HTTP ${status} ${obj.message || body || "未知响应"}`.trim() });
-    });
-  });
+function parseTargets(args) {
+  const hosts = splitList(args.host);
+  const tokens = splitList(args.token);
+  const out = [];
+  for (let i = 0; i < hosts.length; i++) {
+    if (hosts[i] && tokens[i]) out.push({ host: hosts[i], token: tokens[i] });
+  }
+  return out;
 }
 
 // ============================================
 // 单站点签到
 // ============================================
-async function doCheckin(host) {
+function doCheckin(host, token) {
   const title = notifyTitleForHost(host);
-  const data = readData();
-  const saved = data[host];
 
-  if (!saved || typeof saved !== "object") {
-    $notification.post(title, "❌ 缺少参数", "请打开站点页面触发一次抓包（新版站点需触发 /api/user/auth/refresh 请求，旧版站点打开个人页即可）");
-    return { success: false, host, msg: "缺少参数" };
+  if (token.indexOf("在这里填入") !== -1 || token.indexOf("粘贴") !== -1) {
+    $notification.post(title, "❌ 尚未配置令牌", "请把模块 argument 中 token= 后面替换为你的访问令牌（个人中心 → 安全 → 访问令牌 生成）");
+    return Promise.resolve({ host, ok: false });
+  }
+  if (isJwtToken(token)) {
+    $notification.post(title, "❌ 令牌类型不对", "填入的是网页登录的短期令牌（15分钟过期）。请到站点 个人中心 → 安全 → 访问令牌 生成随机串令牌");
+    return Promise.resolve({ host, ok: false });
   }
 
-  const auth = String(saved.Authorization || "").trim();
-  const cookieStr = String(saved.Cookie || "");
-
-  let mode;
-  if (auth) {
-    mode = isJwtToken(auth) ? "invalid" : "pat";
-  } else if (/new_api_refresh=[^;\s,]+/.test(cookieStr)) {
-    mode = "refresh";
-  } else if (cookieStr && saved["new-api-user"]) {
-    mode = "legacy";
-  } else {
-    mode = "none";
-  }
-
-  if (mode === "invalid") {
-    $notification.post(title, "❌ 凭据不可用", "保存的是短期令牌（15分钟过期），请重新抓包 refresh 请求，或在站点生成访问令牌");
-    return { success: false, host, msg: "凭据不可用" };
-  }
-  if (mode === "none") {
-    $notification.post(title, "❌ 缺少参数", "已保存的参数不含可用凭据，请重新抓包");
-    return { success: false, host, msg: "缺少参数" };
-  }
-
-  const baseHeaders = {
-    "Host": saved.Host || host,
-    "User-Agent": saved["User-Agent"] || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+  const headers = {
+    "Host": host,
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1",
     "Accept": "application/json, text/plain, */*",
-    "Accept-Language": saved["Accept-Language"] || "zh-CN,zh-Hans;q=0.9",
-    "Accept-Encoding": safeAcceptEncoding(saved["Accept-Encoding"]),
-    "Origin": saved.Origin || originFromHost(host),
-    "Referer": saved.Referer || `${originFromHost(host)}/profile`
+    "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Origin": `https://${host}`,
+    "Referer": `https://${host}/profile`,
+    "Authorization": `Bearer ${token.replace(/^Bearer\s+/i, "")}`
   };
 
-  let authHeader = "";
-  if (mode === "pat") {
-    authHeader = /^bearer /i.test(auth) ? auth : `Bearer ${auth}`;
-  } else if (mode === "refresh") {
-    const r = await refreshSession(host, saved);
-    if (!r.ok) {
-      const msg = r.expired
-        ? `${r.msg}\n请重新登录站点并重新抓包，或在 个人设置→访问令牌 生成后手动填入`
-        : r.msg;
-      console.log(`[NewAPI] ${title} | ❌ 刷新会话失败 | ${r.msg}`);
-      $notification.post(title, r.expired ? "❌ 登录会话过期" : "❌ 刷新会话失败", msg);
-      return { success: false, host, msg: r.expired ? "登录会话过期" : "刷新会话失败" };
-    }
-    if (r.newCookie && r.newCookie !== cookieStr) {
-      const latest = readData(); // 重新读取，避免覆盖期间抓包脚本写入的其他站点数据
-      if (latest[host] && typeof latest[host] === "object") {
-        latest[host].Cookie = r.newCookie;
-        writeData(latest);
-      }
-      console.log(`[NewAPI] ${title} | 已回存轮换后的新登录会话`);
-    }
-    authHeader = `Bearer ${r.token}`;
-  }
-
-  const headers = { ...baseHeaders };
-  if (authHeader) headers.Authorization = authHeader;
-  if (mode === "legacy") {
-    headers.Cookie = cookieStr;
-    headers["new-api-user"] = saved["new-api-user"] || "";
-  }
-
   return new Promise((resolve) => {
-    const url = `${originFromHost(host)}/api/user/checkin`;
+    const url = `https://${host}/api/user/checkin`;
     const startTime = new Date().getTime();
     $httpClient.post({ url, headers, body: "" }, (err, resp, body) => {
       const latency = new Date().getTime() - startTime;
@@ -263,28 +137,25 @@ async function doCheckin(host) {
       if (err) {
         console.log(`[NewAPI] ${title} | ❌ 网络错误 | ${err}`);
         $notification.post(title, "❌ 网络错误", String(err));
-        resolve({ success: false, host, msg: `网络错误: ${err}` });
+        resolve({ host, ok: false });
         return;
       }
 
       const status = (resp && resp.status) || 0;
       const bodyStr = body || "";
-      console.log(`[NewAPI] ${title} | HTTP ${status} | ${latency}ms | ${mode}`);
-
       const obj = safeJsonParse(bodyStr) || {};
       const success = Boolean(obj.success);
       const message = obj.message ? String(obj.message) : "";
+      const code = obj.code ? String(obj.code) : "";
+      console.log(`[NewAPI] ${title} | HTTP ${status} | ${latency}ms | ${message || code || bodyStr.slice(0, 120)}`);
 
-      // 登录失效
+      // 令牌无效
       if (status === 401 || status === 403) {
-        const tip = mode === "pat"
-          ? "访问令牌无效，请在站点 个人设置→访问令牌 重新生成后手动填入"
-          : mode === "refresh"
-            ? "请重新登录站点并重新抓包，或改用访问令牌"
-            : "请重新抓包保存 Cookie";
-        console.log(`[NewAPI] ${title} | ❌ 登录失效 | HTTP ${status}`);
-        $notification.post(title, "❌ 登录失效", `HTTP ${status}，${tip}`);
-        resolve({ success: false, host, msg: "登录失效" });
+        const tip = code === "AUTH_TOKEN_EXPIRED"
+          ? "令牌已过期（这是短期登录令牌）。请到 个人中心 → 安全 → 访问令牌 生成随机串令牌"
+          : "访问令牌无效，请到 个人中心 → 安全 → 访问令牌 重新生成并更新模块 argument";
+        $notification.post(title, `❌ 令牌无效（HTTP ${status}）`, `${code ? code + "\n" : ""}${tip}`);
+        resolve({ host, ok: false });
         return;
       }
 
@@ -293,16 +164,14 @@ async function doCheckin(host) {
         const checkinDate = obj?.data?.checkin_date ? String(obj.data.checkin_date) : "";
         const quotaAwarded = obj?.data?.quota_awarded !== undefined ? formatQuota(obj.data.quota_awarded) : "";
         const content = `${checkinDate ? `日期：${checkinDate}\n` : ""}${quotaAwarded ? `获得：${quotaAwarded}` : "签到成功"}`;
-        console.log(`[NewAPI] ${title} | ✅ 签到成功 | ${content.replace(/\n/g, " | ")}`);
         $notification.post(title, "✅ 签到成功", content);
-        resolve({ success: true, host, msg: "签到成功", data: { date: checkinDate, quota: quotaAwarded } });
+        resolve({ host, ok: true });
         return;
       }
 
-      // 失败/已签到/其他
-      console.log(`[NewAPI] ${title} | ❌ 签到失败 | ${message || bodyStr}`);
+      // 已签到 / 功能未启用 / 其他失败
       $notification.post(title, "⚠️ 签到结果", message || "未知响应");
-      resolve({ success: false, host, msg: message || "签到失败" });
+      resolve({ host, ok: false });
     });
   });
 }
@@ -310,19 +179,17 @@ async function doCheckin(host) {
 // ============================================
 // 主入口
 // ============================================
-const args = parseArgs(typeof $argument !== "undefined" ? $argument : "");
-const onlyHost = (args.host || "").trim();
-const hostsToRun = onlyHost ? [onlyHost] : getSavedHosts();
+const targets = parseTargets(getConfig());
 
-if (!onlyHost && hostsToRun.length === 0) {
-  $notification.post("NewAPI 通用签到", "❌ 无可用站点", "请打开站点页面触发一次抓包后再运行（新版站点需触发 /api/user/auth/refresh 请求）");
+if (targets.length === 0) {
+  $notification.post("NewAPI 通用签到", "❌ 未配置令牌", "Egern 请给脚本添加环境变量 host 和 token；Surge/Loon 在 argument 填 host=域名&token=令牌。令牌在站点 个人中心 → 安全 → 访问令牌 生成");
   $done();
 } else {
   (async () => {
-    console.log(`[NewAPI] 开始签到，共 ${hostsToRun.length} 个站点`);
+    console.log(`[NewAPI] 开始签到，共 ${targets.length} 个站点`);
 
-    for (const h of hostsToRun) {
-      await doCheckin(h);
+    for (const t of targets) {
+      await doCheckin(t.host, t.token);
     }
 
     console.log("[NewAPI] 全部签到完成");
