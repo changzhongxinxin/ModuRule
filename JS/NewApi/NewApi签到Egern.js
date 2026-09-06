@@ -14,6 +14,7 @@ NewAPI 通用签到 - Egern 原生脚本
 
 注意：这里要填的是"访问令牌"（个人中心生成的随机串，长期有效），
 不是网页登录产生的短期 JWT（15 分钟即过期，脚本检测到会提示）。
+令牌可能包含 / + = 等 base64 字符，属正常现象，脚本会原样发送。
 *******************************/
 
 const QUOTA_PER_UNIT = 500000; // new-api 额度默认 500000 = $1
@@ -41,13 +42,13 @@ function formatQuota(q) {
   return `${q}（≈$${(n / QUOTA_PER_UNIT).toFixed(2)}）`;
 }
 
+// 只能用于域名！令牌是 base64 系字符，可能含 /，绝不能走这个函数
 function normalizeHost(h) {
-  // 容错：去掉误带的 https:// 前缀和路径部分，只保留纯域名
   return String(h || "").trim().replace(/^https?:\/\//i, "").split("/")[0].trim();
 }
 
 function splitList(str) {
-  return String(str || "").split(",").map(s => normalizeHost(s)).filter(Boolean);
+  return String(str || "").split(",").map(s => s.trim()).filter(Boolean);
 }
 
 async function checkin(ctx, host, token) {
@@ -62,6 +63,8 @@ async function checkin(ctx, host, token) {
     return;
   }
 
+  const sentToken = token.replace(/^Bearer\s+/i, "");
+
   try {
     const resp = await ctx.http.post(`https://${host}/api/user/checkin`, {
       headers: {
@@ -71,7 +74,7 @@ async function checkin(ctx, host, token) {
         "Accept-Language": "zh-CN,zh-Hans;q=0.9",
         "Origin": `https://${host}`,
         "Referer": `https://${host}/profile`,
-        "Authorization": `Bearer ${token.replace(/^Bearer\s+/i, "")}`
+        "Authorization": `Bearer ${sentToken}`
       },
       body: "",
       timeout: 30000
@@ -84,12 +87,11 @@ async function checkin(ctx, host, token) {
     const message = obj.message ? String(obj.message) : "";
     const code = obj.code ? String(obj.code) : "";
 
-    // 令牌无效
+    // 令牌无效：带令牌指纹和响应片段，便于定位是令牌填错还是被 WAF 拦截
     if (status === 401 || status === 403) {
-      const tip = code === "AUTH_TOKEN_EXPIRED"
-        ? "令牌已过期（这是短期登录令牌）。请到 个人中心 → 安全 → 访问令牌 生成随机串令牌"
-        : "访问令牌无效，请到 个人中心 → 安全 → 访问令牌 重新生成并更新环境变量";
-      ctx.notify({ title, subtitle: `❌ 令牌无效（HTTP ${status}）`, body: `${code ? code + "\n" : ""}${tip}` });
+      const fp = `长度${sentToken.length}，${sentToken.slice(0, 4)}…${sentToken.slice(-4)}`;
+      const preview = bodyStr.replace(/\s+/g, " ").trim().slice(0, 150);
+      ctx.notify({ title, subtitle: `❌ 令牌无效（HTTP ${status}）`, body: `令牌指纹：${fp}\n响应片段：${preview || "(空)"}` });
       return;
     }
 
@@ -97,20 +99,22 @@ async function checkin(ctx, host, token) {
     if (success) {
       const checkinDate = obj?.data?.checkin_date ? String(obj.data.checkin_date) : "";
       const quotaAwarded = obj?.data?.quota_awarded !== undefined ? formatQuota(obj.data.quota_awarded) : "";
-      const content = `${checkinDate ? `日期：${checkinDate}\n` : ""}${quotaAwarded ? `获得：${quotaAwarded}` : "签到成功"}`;
+      const runAt = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+      const content = `运行时间：${runAt}\n${checkinDate ? `日期：${checkinDate}\n` : ""}${quotaAwarded ? `获得：${quotaAwarded}` : "签到成功"}`;
       ctx.notify({ title, subtitle: "✅ 签到成功", body: content });
       return;
     }
 
     // 已签到 / 功能未启用 / 其他失败
-    ctx.notify({ title, subtitle: "⚠️ 签到结果", body: message || "未知响应" });
+    const runAt = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+    ctx.notify({ title, subtitle: "⚠️ 签到结果", body: `${message || "未知响应"}（运行时间：${runAt}）` });
   } catch (e) {
     ctx.notify({ title, subtitle: "❌ 网络错误", body: String(e && e.message ? e.message : e) });
   }
 }
 
 export default async function(ctx) {
-  const hosts = splitList(ctx.env && ctx.env.host);
+  const hosts = splitList(ctx.env && ctx.env.host).map(normalizeHost);
   const tokens = splitList(ctx.env && ctx.env.token);
 
   if (hosts.length === 0 || tokens.length === 0) {

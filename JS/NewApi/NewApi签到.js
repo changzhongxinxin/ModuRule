@@ -15,6 +15,7 @@ NewAPI 通用签到 - 定时执行脚本（令牌直填版）
 
 注意：这里要填的是"访问令牌"（个人中心生成的随机串，长期有效），
 不是网页登录产生的短期 JWT（15 分钟即过期，脚本检测到会提示）。
+令牌可能包含 / + = 等 base64 字符，属正常现象，脚本会原样发送。
 *******************************/
 
 // ============================================
@@ -63,13 +64,13 @@ function parseArgs(str) {
   }
 }
 
+// 只能用于域名！令牌是 base64 系字符，可能含 /，绝不能走这个函数
 function normalizeHost(h) {
-  // 容错：去掉误带的 https:// 前缀和路径部分，只保留纯域名
   return String(h || "").trim().replace(/^https?:\/\//i, "").split("/")[0].trim();
 }
 
 function splitList(str) {
-  return String(str || "").split(",").map(s => normalizeHost(s)).filter(Boolean);
+  return String(str || "").split(",").map(s => s.trim()).filter(Boolean);
 }
 
 function notifyTitleForHost(host) {
@@ -95,10 +96,10 @@ function formatQuota(q) {
 }
 
 // ============================================
-// 解析 argument：host 与 token 按逗号顺序一一对应
+// 解析配置：host 与 token 按逗号顺序一一对应
 // ============================================
 function parseTargets(args) {
-  const hosts = splitList(args.host);
+  const hosts = splitList(args.host).map(normalizeHost);
   const tokens = splitList(args.token);
   const out = [];
   for (let i = 0; i < hosts.length; i++) {
@@ -114,7 +115,7 @@ function doCheckin(host, token) {
   const title = notifyTitleForHost(host);
 
   if (token.indexOf("在这里填入") !== -1 || token.indexOf("粘贴") !== -1) {
-    $notification.post(title, "❌ 尚未配置令牌", "请把模块 argument 中 token= 后面替换为你的访问令牌（个人中心 → 安全 → 访问令牌 生成）");
+    $notification.post(title, "❌ 尚未配置令牌", "请把配置中 token= 后面替换为你的访问令牌（个人中心 → 安全 → 访问令牌 生成）");
     return Promise.resolve({ host, ok: false });
   }
   if (isJwtToken(token)) {
@@ -122,6 +123,7 @@ function doCheckin(host, token) {
     return Promise.resolve({ host, ok: false });
   }
 
+  const sentToken = token.replace(/^Bearer\s+/i, "");
   const headers = {
     "Host": host,
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1",
@@ -130,7 +132,7 @@ function doCheckin(host, token) {
     "Accept-Encoding": "gzip, deflate, br",
     "Origin": `https://${host}`,
     "Referer": `https://${host}/profile`,
-    "Authorization": `Bearer ${token.replace(/^Bearer\s+/i, "")}`
+    "Authorization": `Bearer ${sentToken}`
   };
 
   return new Promise((resolve) => {
@@ -148,18 +150,18 @@ function doCheckin(host, token) {
 
       const status = (resp && resp.status) || 0;
       const bodyStr = body || "";
+      const runAt = new Date().toLocaleTimeString("zh-CN", { hour12: false });
       const obj = safeJsonParse(bodyStr) || {};
       const success = Boolean(obj.success);
       const message = obj.message ? String(obj.message) : "";
       const code = obj.code ? String(obj.code) : "";
       console.log(`[NewAPI] ${title} | HTTP ${status} | ${latency}ms | ${message || code || bodyStr.slice(0, 120)}`);
 
-      // 令牌无效
+      // 令牌无效：带令牌指纹和响应片段，便于定位是令牌填错还是被 WAF 拦截
       if (status === 401 || status === 403) {
-        const tip = code === "AUTH_TOKEN_EXPIRED"
-          ? "令牌已过期（这是短期登录令牌）。请到 个人中心 → 安全 → 访问令牌 生成随机串令牌"
-          : "访问令牌无效，请到 个人中心 → 安全 → 访问令牌 重新生成并更新模块 argument";
-        $notification.post(title, `❌ 令牌无效（HTTP ${status}）`, `${code ? code + "\n" : ""}${tip}`);
+        const fp = `长度${sentToken.length}，${sentToken.slice(0, 4)}…${sentToken.slice(-4)}`;
+        const preview = bodyStr.replace(/\s+/g, " ").trim().slice(0, 150);
+        $notification.post(title, `❌ 令牌无效（HTTP ${status}）`, `令牌指纹：${fp}\n响应片段：${preview || "(空)"}`);
         resolve({ host, ok: false });
         return;
       }
@@ -168,14 +170,14 @@ function doCheckin(host, token) {
       if (success) {
         const checkinDate = obj?.data?.checkin_date ? String(obj.data.checkin_date) : "";
         const quotaAwarded = obj?.data?.quota_awarded !== undefined ? formatQuota(obj.data.quota_awarded) : "";
-        const content = `${checkinDate ? `日期：${checkinDate}\n` : ""}${quotaAwarded ? `获得：${quotaAwarded}` : "签到成功"}`;
+        const content = `运行时间：${runAt}\n${checkinDate ? `日期：${checkinDate}\n` : ""}${quotaAwarded ? `获得：${quotaAwarded}` : "签到成功"}`;
         $notification.post(title, "✅ 签到成功", content);
         resolve({ host, ok: true });
         return;
       }
 
       // 已签到 / 功能未启用 / 其他失败
-      $notification.post(title, "⚠️ 签到结果", message || "未知响应");
+      $notification.post(title, "⚠️ 签到结果", `${message || "未知响应"}（运行时间：${runAt}）`);
       resolve({ host, ok: false });
     });
   });
