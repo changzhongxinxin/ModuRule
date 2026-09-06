@@ -1,7 +1,12 @@
 /******************************
 NewAPI 通用签到 - Header抓取脚本
-更新时间：2026-04-20
+适配新版 new-api JWT 鉴权（access token 仅15分钟有效，长期凭据为
+/api/user/auth/refresh 请求中的 new_api_refresh Cookie，约30天有效）
+更新时间：2026-09-06
 作者：Linsar
+
+新版站点：打开站点页面触发 /api/user/auth/refresh 请求即可抓取
+旧版站点：仍支持抓取 /api/user/self 的 Cookie + new-api-user
 *******************************/
 
 const HEADER_KEY_PREFIX = "UniversalCheckin_Headers";
@@ -9,13 +14,12 @@ const HOSTS_LIST_KEY = "UniversalCheckin_HostsList";
 
 const NEED_KEYS = [
   "Host", "User-Agent", "Accept", "Accept-Language",
-  "Accept-Encoding", "Origin", "Referer", "Cookie", "new-api-user"
+  "Accept-Encoding", "Origin", "Referer", "Cookie", "new-api-user", "Authorization"
 ];
 
 function safeJsonParse(str) {
   try { return JSON.parse(str); } catch (_) { return null; }
 }
-
 
 function getArgument() {
   if (typeof $argument !== "undefined") return $argument;
@@ -66,10 +70,9 @@ function getHostFromRequest() {
   } catch (_) { return ""; }
 }
 
-function headerKeyForHost(host) { 
-  return `${HEADER_KEY_PREFIX}:${host}`; 
+function headerKeyForHost(host) {
+  return `${HEADER_KEY_PREFIX}:${host}`;
 }
-
 
 function readStore(key) {
   if (typeof $persistentStore !== "undefined") {
@@ -121,7 +124,6 @@ function notifyTitleForHost(host) {
   } catch (_) { return host; }
 }
 
-
 function sendNotify(title, subtitle, body) {
   try {
     if (typeof $notification !== "undefined") {
@@ -134,35 +136,92 @@ function sendNotify(title, subtitle, body) {
   }
 }
 
-// 主逻辑
-const args = parseArgs(getArgument());
-const enableCapture = args.ENABLE_CAPTURE === true || args.ENABLE_CAPTURE === "true";
+// new-api 的短期 access token 是 JWT；访问令牌(PAT)是普通随机串
+function isJwtToken(str) {
+  return /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(String(str || "").trim());
+}
 
-if (!enableCapture) {
-  console.log("[NewAPI] 抓包已关闭，跳过处理");
+function main() {
+  const args = parseArgs(getArgument());
+  const enableCapture = args.ENABLE_CAPTURE === true || args.ENABLE_CAPTURE === "true";
+
+  if (!enableCapture) {
+    console.log("[NewAPI] 抓包已关闭，跳过处理");
+    $done({});
+    return;
+  }
+
+  const allHeaders = ($request && $request.headers) || {};
+  const host = getHostFromRequest();
+  const url = String(($request && $request.url) || "");
+  const picked = pickNeedHeaders(allHeaders);
+
+  if (!host) {
+    $done({});
+    return;
+  }
+
+  const rawAuth = String(picked.Authorization || "").trim();
+  const auth = rawAuth.replace(/^Bearer\s+/i, ""); // JWT 形态判断需先去掉前缀
+  const jwtLike = isJwtToken(auth);
+  const cookieStr = String(picked.Cookie || "");
+  const refreshCookieMatch = cookieStr.match(/new_api_refresh=([^;\s,]+)/);
+  const isRefreshReq = url.indexOf("/api/user/auth/refresh") !== -1;
+
+  const title = notifyTitleForHost(host);
+
+  const saveAndNotify = (tip) => {
+    const key = headerKeyForHost(host);
+    const ok = writeStore(key, JSON.stringify(picked));
+    if (ok) addHostToList(host);
+    console.log(`[NewAPI] ${title} | 参数保存 | 已保存 ${Object.keys(picked).length} 个字段`);
+    sendNotify(
+      ok ? `${title} 参数获取成功` : `${title} 参数保存失败`,
+      "",
+      ok ? tip : "写入本地存储失败，请检查配置。"
+    );
+    $done({});
+  };
+
+  // 新版 new-api：refresh 请求携带轮换用的 new_api_refresh Cookie（约30天有效）
+  if (isRefreshReq || refreshCookieMatch) {
+    if (refreshCookieMatch) {
+      delete picked.Authorization; // 短期 JWT 无保存价值
+      saveAndNotify("已捕获登录会话（约30天有效），将用于自动签到。若后续提示会话过期，重新登录站点即可。");
+      return;
+    }
+    sendNotify("NewAPI 通用签到", "抓包失败", "refresh 请求中未找到 new_api_refresh Cookie，请确认已在站点登录后重试");
+    $done({});
+    return;
+  }
+
+  // 访问令牌（PAT）：非 JWT 格式的 Authorization，长期有效
+  if (auth && !jwtLike) {
+    saveAndNotify("已捕获访问令牌（长期有效），将用于自动签到。");
+    return;
+  }
+
+  // 旧版 new-api：Cookie + new-api-user
+  if (cookieStr && picked["new-api-user"]) {
+    saveAndNotify("已捕获登录 Cookie（旧版接口），将用于自动签到。");
+    return;
+  }
+
+  // 只有短期 JWT：15分钟即过期，不能直接使用
+  if (jwtLike) {
+    console.log("[NewAPI] 抓包失败: 仅捕获到短期 access token");
+    sendNotify(
+      "NewAPI 通用签到",
+      "该令牌15分钟后过期",
+      "请打开站点页面，等待 /api/user/auth/refresh 请求触发抓包；或在站点 个人设置→访问令牌 生成后手动填入。"
+    );
+    $done({});
+    return;
+  }
+
+  console.log("[NewAPI] 抓包失败: 未匹配到可用凭据", JSON.stringify(allHeaders));
+  sendNotify("NewAPI 通用签到", "抓包失败", "未捕获到可用凭据：新版站点请触发 /api/user/auth/refresh 请求，旧版站点需 Cookie + new-api-user");
   $done({});
 }
 
-const allHeaders = $request.headers || {};
-const host = getHostFromRequest();
-const picked = pickNeedHeaders(allHeaders);
-
-if (!host || !picked.Cookie || !picked["new-api-user"]) {
-  console.log("[NewAPI] 抓包失败: 缺少Cookie或new-api-user", JSON.stringify(allHeaders));
-  sendNotify("NewAPI 通用签到", "抓包失败", "未获取到 Cookie 或 new-api-user");
-  $done({});
-}
-
-const key = headerKeyForHost(host);
-const ok = writeStore(key, JSON.stringify(picked));
-if (ok) addHostToList(host);
-
-const title = notifyTitleForHost(host);
-console.log(`[NewAPI] ${title} | 参数保存 | 已保存 ${Object.keys(picked).length} 个字段`);
-
-sendNotify(
-  ok ? `${title} 参数获取成功` : `${title} 参数保存失败`,
-  "",
-  ok ? "后续将用于自动签到，请在配置中关闭抓取避免重复提示。" : "写入本地存储失败，请检查配置。"
-);
-$done({});
+main();
