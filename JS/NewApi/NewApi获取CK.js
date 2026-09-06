@@ -143,7 +143,8 @@ function isJwtToken(str) {
 
 function main() {
   const args = parseArgs(getArgument());
-  const enableCapture = args.ENABLE_CAPTURE === true || args.ENABLE_CAPTURE === "true";
+  // 默认开启抓取（不依赖模块传参）；需要关闭时显式传 ENABLE_CAPTURE=false
+  const enableCapture = !(args.ENABLE_CAPTURE === false || args.ENABLE_CAPTURE === "false");
 
   if (!enableCapture) {
     console.log("[NewAPI] 抓包已关闭，跳过处理");
@@ -169,17 +170,26 @@ function main() {
   const isRefreshReq = url.indexOf("/api/user/auth/refresh") !== -1;
 
   const title = notifyTitleForHost(host);
+  const storeKey = headerKeyForHost(host);
+  const existingRaw = readStore(storeKey);
+  const hasUsableStored = !!existingRaw &&
+    (existingRaw.indexOf("new_api_refresh=") !== -1 || /"Authorization"\s*:\s*"Bearer (?!eyJ)/.test(existingRaw));
 
-  const saveAndNotify = (tip) => {
-    const key = headerKeyForHost(host);
-    const ok = writeStore(key, JSON.stringify(picked));
-    if (ok) addHostToList(host);
-    console.log(`[NewAPI] ${title} | 参数保存 | 已保存 ${Object.keys(picked).length} 个字段`);
-    sendNotify(
-      ok ? `${title} 参数获取成功` : `${title} 参数保存失败`,
-      "",
-      ok ? tip : "写入本地存储失败，请检查配置。"
-    );
+  // 内容有变化才写存储；首次捕获发通知，之后静默更新避免刷屏
+  const saveIfChanged = (tip) => {
+    const serialized = JSON.stringify(picked);
+    const changed = serialized !== existingRaw;
+    let ok = true;
+    if (changed) {
+      ok = writeStore(storeKey, serialized);
+      if (ok) addHostToList(host);
+      console.log(`[NewAPI] ${title} | 参数更新 | 已保存 ${Object.keys(picked).length} 个字段`);
+    }
+    if (!ok) {
+      sendNotify(`${title} 参数保存失败`, "", "写入本地存储失败，请检查配置。");
+    } else if (changed && !existingRaw) {
+      sendNotify(`${title} 参数获取成功`, "", tip);
+    }
     $done({});
   };
 
@@ -187,7 +197,7 @@ function main() {
   if (isRefreshReq || refreshCookieMatch) {
     if (refreshCookieMatch) {
       delete picked.Authorization; // 短期 JWT 无保存价值
-      saveAndNotify("已捕获登录会话（约30天有效），将用于自动签到。若后续提示会话过期，重新登录站点即可。");
+      saveIfChanged("已捕获登录会话（约30天有效），将用于自动签到。注意：该令牌一次一换，脚本刷新后网页端再打开站点需重新登录，属正常现象。");
       return;
     }
     sendNotify("NewAPI 通用签到", "抓包失败", "refresh 请求中未找到 new_api_refresh Cookie，请确认已在站点登录后重试");
@@ -197,30 +207,31 @@ function main() {
 
   // 访问令牌（PAT）：非 JWT 格式的 Authorization，长期有效
   if (auth && !jwtLike) {
-    saveAndNotify("已捕获访问令牌（长期有效），将用于自动签到。");
+    saveIfChanged("已捕获访问令牌（长期有效），将用于自动签到。");
     return;
   }
 
   // 旧版 new-api：Cookie + new-api-user
   if (cookieStr && picked["new-api-user"]) {
-    saveAndNotify("已捕获登录 Cookie（旧版接口），将用于自动签到。");
+    saveIfChanged("已捕获登录 Cookie（旧版接口），将用于自动签到。");
     return;
   }
 
   // 只有短期 JWT：15分钟即过期，不能直接使用
   if (jwtLike) {
-    console.log("[NewAPI] 抓包失败: 仅捕获到短期 access token");
-    sendNotify(
-      "NewAPI 通用签到",
-      "该令牌15分钟后过期",
-      "请打开站点页面，等待 /api/user/auth/refresh 请求触发抓包；或在站点 个人设置→访问令牌 生成后手动填入。"
-    );
+    console.log("[NewAPI] 仅捕获到短期 access token，跳过保存");
+    if (!hasUsableStored) {
+      sendNotify(
+        "NewAPI 通用签到",
+        "需要重新获取凭据",
+        "当前令牌15分钟即过期。请打开站点页面等待 /api/user/auth/refresh 请求（脚本会自动抓取），或在站点重新登录后重试。"
+      );
+    }
     $done({});
     return;
   }
 
-  console.log("[NewAPI] 抓包失败: 未匹配到可用凭据", JSON.stringify(allHeaders));
-  sendNotify("NewAPI 通用签到", "抓包失败", "未捕获到可用凭据：新版站点请触发 /api/user/auth/refresh 请求，旧版站点需 Cookie + new-api-user");
+  console.log("[NewAPI] 未匹配到可用凭据，跳过", JSON.stringify(allHeaders));
   $done({});
 }
 

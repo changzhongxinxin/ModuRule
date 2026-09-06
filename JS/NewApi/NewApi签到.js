@@ -106,6 +106,12 @@ function formatQuota(q) {
   return `${q}（≈$${(n / 500000).toFixed(2)}）`;
 }
 
+// Surge/Egern 脚本响应可能不解压 zstd，请求头里去掉它避免拿到解不开的响应体
+function safeAcceptEncoding(value) {
+  const cleaned = String(value || "").replace(/,?\s*zstd/gi, "").replace(/^,|,$/g, "").trim();
+  return cleaned || "gzip, deflate, br";
+}
+
 // ============================================
 // 获取保存的站点列表
 // ============================================
@@ -132,6 +138,7 @@ function refreshSession(host, saved) {
       "User-Agent": saved["User-Agent"] || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
       "Origin": saved.Origin || originFromHost(host),
       "Referer": saved.Referer || `${originFromHost(host)}/`,
+      "Accept-Encoding": safeAcceptEncoding(saved["Accept-Encoding"]),
       "Cookie": saved.Cookie || ""
     };
 
@@ -178,7 +185,7 @@ async function doCheckin(host) {
   const raw = readStore(key);
 
   if (!raw) {
-    $notification.post(title, "❌ 缺少参数", "请先打开站点页面抓取 /api/user/auth/refresh 请求保存登录会话");
+    $notification.post(title, "❌ 缺少参数", "请在站点 个人设置→访问令牌 点击生成（脚本自动抓取），或打开站点页面抓取 /api/user/auth/refresh 请求");
     return { success: false, host, msg: "缺少参数" };
   }
 
@@ -216,7 +223,7 @@ async function doCheckin(host) {
     "User-Agent": saved["User-Agent"] || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": saved["Accept-Language"] || "zh-CN,zh-Hans;q=0.9",
-    "Accept-Encoding": saved["Accept-Encoding"] || "gzip, deflate, br",
+    "Accept-Encoding": safeAcceptEncoding(saved["Accept-Encoding"]),
     "Origin": saved.Origin || originFromHost(host),
     "Referer": saved.Referer || `${originFromHost(host)}/profile`
   };
@@ -309,7 +316,7 @@ const onlyHost = (args.host || "").trim();
 const hostsToRun = onlyHost ? [onlyHost] : getSavedHosts();
 
 if (!onlyHost && hostsToRun.length === 0) {
-  $notification.post("NewAPI 通用签到", "❌ 无可用站点", "请先打开站点页面抓取 /api/user/auth/refresh 请求保存登录会话");
+  $notification.post("NewAPI 通用签到", "❌ 无可用站点", "请在站点 个人设置→访问令牌 点击生成（脚本自动抓取），或打开站点页面抓取 /api/user/auth/refresh 请求");
   $done();
 } else {
   (async () => {
