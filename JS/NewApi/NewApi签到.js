@@ -37,8 +37,16 @@ function parseArgs(str) {
   }
 }
 
-function headerKeyForHost(h) {
-  return `UniversalCheckin_Headers:${h}`;
+// 所有站点的凭据统一存在这一个 key 下：{ "站点域名": {请求头字段...}, ... }
+const DATA_KEY = "UniversalCheckin";
+
+function readData() {
+  const parsed = safeJsonParse(readStore(DATA_KEY));
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+}
+
+function writeData(data) {
+  return writeStore(DATA_KEY, JSON.stringify(data));
 }
 
 function notifyTitleForHost(host) {
@@ -113,18 +121,11 @@ function safeAcceptEncoding(value) {
 }
 
 // ============================================
-// 获取保存的站点列表
+// 获取保存的站点列表（即统一存储的顶层键）
 // ============================================
 function getSavedHosts() {
-  try {
-    const raw = readStore("UniversalCheckin_HostsList");
-    if (!raw) return [];
-    const hosts = safeJsonParse(raw) || [];
-    return Array.isArray(hosts) ? hosts.filter(h => h && typeof h === "string") : [];
-  } catch (e) {
-    console.log("[NewAPI] 获取站点列表失败:", e);
-    return [];
-  }
+  const data = readData();
+  return Object.keys(data).filter(h => h && typeof data[h] === "object");
 }
 
 // ============================================
@@ -181,18 +182,12 @@ function refreshSession(host, saved) {
 // ============================================
 async function doCheckin(host) {
   const title = notifyTitleForHost(host);
-  const key = headerKeyForHost(host);
-  const raw = readStore(key);
+  const data = readData();
+  const saved = data[host];
 
-  if (!raw) {
-    $notification.post(title, "❌ 缺少参数", "请在站点 个人设置→访问令牌 点击生成（脚本自动抓取），或打开站点页面抓取 /api/user/auth/refresh 请求");
+  if (!saved || typeof saved !== "object") {
+    $notification.post(title, "❌ 缺少参数", "请打开站点页面触发一次抓包（新版站点需触发 /api/user/auth/refresh 请求，旧版站点打开个人页即可）");
     return { success: false, host, msg: "缺少参数" };
-  }
-
-  const saved = safeJsonParse(raw);
-  if (!saved) {
-    $notification.post(title, "❌ 参数异常", "已保存的请求头解析失败，请重新抓包");
-    return { success: false, host, msg: "参数异常" };
   }
 
   const auth = String(saved.Authorization || "").trim();
@@ -242,7 +237,11 @@ async function doCheckin(host) {
       return { success: false, host, msg: r.expired ? "登录会话过期" : "刷新会话失败" };
     }
     if (r.newCookie && r.newCookie !== cookieStr) {
-      writeStore(key, JSON.stringify({ ...saved, Cookie: r.newCookie }));
+      const latest = readData(); // 重新读取，避免覆盖期间抓包脚本写入的其他站点数据
+      if (latest[host] && typeof latest[host] === "object") {
+        latest[host].Cookie = r.newCookie;
+        writeData(latest);
+      }
       console.log(`[NewAPI] ${title} | 已回存轮换后的新登录会话`);
     }
     authHeader = `Bearer ${r.token}`;
@@ -316,7 +315,7 @@ const onlyHost = (args.host || "").trim();
 const hostsToRun = onlyHost ? [onlyHost] : getSavedHosts();
 
 if (!onlyHost && hostsToRun.length === 0) {
-  $notification.post("NewAPI 通用签到", "❌ 无可用站点", "请在站点 个人设置→访问令牌 点击生成（脚本自动抓取），或打开站点页面抓取 /api/user/auth/refresh 请求");
+  $notification.post("NewAPI 通用签到", "❌ 无可用站点", "请打开站点页面触发一次抓包后再运行（新版站点需触发 /api/user/auth/refresh 请求）");
   $done();
 } else {
   (async () => {

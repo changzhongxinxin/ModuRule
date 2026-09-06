@@ -9,8 +9,8 @@ NewAPI 通用签到 - Header抓取脚本
 旧版站点：仍支持抓取 /api/user/self 的 Cookie + new-api-user
 *******************************/
 
-const HEADER_KEY_PREFIX = "UniversalCheckin_Headers";
-const HOSTS_LIST_KEY = "UniversalCheckin_HostsList";
+// 所有站点的凭据统一存在这一个 key 下：{ "站点域名": {请求头字段...}, ... }
+const DATA_KEY = "UniversalCheckin";
 
 const NEED_KEYS = [
   "Host", "User-Agent", "Accept", "Accept-Language",
@@ -70,8 +70,13 @@ function getHostFromRequest() {
   } catch (_) { return ""; }
 }
 
-function headerKeyForHost(host) {
-  return `${HEADER_KEY_PREFIX}:${host}`;
+function readData() {
+  const parsed = safeJsonParse(readStore(DATA_KEY));
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+}
+
+function writeData(data) {
+  return writeStore(DATA_KEY, JSON.stringify(data));
 }
 
 function readStore(key) {
@@ -98,20 +103,6 @@ function writeStore(key, value) {
     return $data.write(value, key);
   }
   return false;
-}
-
-function addHostToList(host) {
-  try {
-    const raw = readStore(HOSTS_LIST_KEY);
-    const hosts = safeJsonParse(raw) || [];
-    if (!hosts.includes(host)) {
-      hosts.push(host);
-      writeStore(HOSTS_LIST_KEY, JSON.stringify(hosts));
-      console.log("[NewAPI] 已添加站点:", host);
-    }
-  } catch (e) {
-    console.log("[NewAPI] 添加站点失败:", e);
-  }
 }
 
 function notifyTitleForHost(host) {
@@ -170,24 +161,25 @@ function main() {
   const isRefreshReq = url.indexOf("/api/user/auth/refresh") !== -1;
 
   const title = notifyTitleForHost(host);
-  const storeKey = headerKeyForHost(host);
-  const existingRaw = readStore(storeKey);
-  const hasUsableStored = !!existingRaw &&
-    (existingRaw.indexOf("new_api_refresh=") !== -1 || /"Authorization"\s*:\s*"Bearer (?!eyJ)/.test(existingRaw));
+  const data = readData();
+  const stored = data[host] || null;
+  const storedAuth = stored ? String(stored.Authorization || "").replace(/^Bearer\s+/i, "") : "";
+  const hasUsableStored = !!stored &&
+    (String(stored.Cookie || "").indexOf("new_api_refresh=") !== -1 ||
+     (storedAuth !== "" && !isJwtToken(storedAuth)));
 
   // 内容有变化才写存储；首次捕获发通知，之后静默更新避免刷屏
   const saveIfChanged = (tip) => {
-    const serialized = JSON.stringify(picked);
-    const changed = serialized !== existingRaw;
+    const changed = JSON.stringify(stored) !== JSON.stringify(picked);
     let ok = true;
     if (changed) {
-      ok = writeStore(storeKey, serialized);
-      if (ok) addHostToList(host);
-      console.log(`[NewAPI] ${title} | 参数更新 | 已保存 ${Object.keys(picked).length} 个字段`);
+      data[host] = picked;
+      ok = writeData(data);
+      console.log(`[NewAPI] ${title} | 参数更新 | 已保存 ${Object.keys(picked).length} 个字段（当前共 ${Object.keys(data).length} 个站点）`);
     }
     if (!ok) {
       sendNotify(`${title} 参数保存失败`, "", "写入本地存储失败，请检查配置。");
-    } else if (changed && !existingRaw) {
+    } else if (changed && !stored) {
       sendNotify(`${title} 参数获取成功`, "", tip);
     }
     $done({});

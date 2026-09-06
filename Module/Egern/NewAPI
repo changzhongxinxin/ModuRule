@@ -4,13 +4,7 @@ icon: https://raw.githubusercontent.com/xushier/HD-Icons/main/border-radius/new-
 scriptings:
 - http_request:
     name: NewAPI签到获取Headers
-    match: ^https:\/\/.*\/api\/user\/self$
-    script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/JS/NewApi/NewApi获取CK.js
-    timeout: 120
-    body_required: false
-- http_request:
-    name: NewAPI签到获取刷新会话
-    match: ^https:\/\/.*\/api\/user\/auth\/refresh$
+    match: ^https:\/\/.*\/api\/user\/(self|auth\/refresh)$
     script_url: https://raw.githubusercontent.com/changzhongxinxin/ModuRule/refs/heads/main/JS/NewApi/NewApi获取CK.js
     timeout: 120
     body_required: false
