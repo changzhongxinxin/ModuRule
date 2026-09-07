@@ -1,0 +1,20 @@
+#!name=Emby保号提醒通知-云端同步
+#!desc=记录最近访问时间到EdgeGist云端，定时巡检比较并通知保号
+#!icon=https://raw.githubusercontent.com/nori5555/nori-emby/main/icons/emby.png
+#!tag=工具
+
+[Argument]
+gistUrl=input,"",tag=自建地址(默认是GitHub官方地址), desc=自建地址(默认是GitHub官方地址)
+Token=input,"",tag=密码/令牌, desc=密码/令牌
+gistDescription=input,"",tag=Gist描述, desc=Gist描述
+gistFilename=input,"",tag=文件名, desc=文件名
+day=input,"",tag=提前提醒天数, desc=提前提醒天数
+
+[Script]
+cron "0 6,12,18,0 * * *" script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/保号/巡检-云端同步.js, timeout=30, tag=巡检通知, argument=[{gistUrl},{Token},{gistDescription},{gistFilename},{day}]
+
+http-request ^https?:\/\/[^\/]+\/.*Playing\/Progress script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/保号/触发-云端同步.js, timeout=30, tag=进度触发, argument=[{gistUrl},{Token},{gistDescription},{gistFilename}]
+
+[MITM]
+hostname = *.feiyue.lol, *.miraiemby.com, embymv.link, *.sfcj.org, *.cn2gias.uk, *.teawaya.com
+
