@@ -13,7 +13,7 @@ day=input,"",tag=提前提醒天数, desc=提前提醒天数
 [Script]
 cron "0 6,12,18,0 * * *" script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/保号/巡检-云端同步.js, timeout=30, tag=巡检通知, argument=[{gistUrl},{Token},{gistDescription},{gistFilename},{day}]
 
-http-request ^https?:\/\/[^\/]+\/.*Playing\/Progress script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/保号/触发-云端同步.js, timeout=30, tag=进度触发, argument=[{gistUrl},{Token},{gistDescription},{gistFilename}]
+http-response ^https?:\/\/[^\/]+\/.*Playing\/Progress script-path=https://raw.githubusercontent.com/changzhongxinxin/ModuRule/main/JS/保号/触发-云端同步.js, timeout=30, tag=进度触发, argument=[{gistUrl},{Token},{gistDescription},{gistFilename}]
 
 [MITM]
 hostname = *.feiyue.lol, *.miraiemby.com, embymv.link, *.sfcj.org, *.cn2gias.uk, *.teawaya.com

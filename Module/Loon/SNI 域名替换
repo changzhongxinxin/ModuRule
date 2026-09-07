@@ -6,12 +6,12 @@
 BaseUrl = input, "", tag=域名后缀,desc=用来替换的域名后缀
 
 [Host]
-#emby.com = emby.789828.xyz
+
 
 [Rewrite]
 request if ${url} ~= /^https?:\/\/(emby|uhd)\.com/i as urlMatch then redirect(307, "https://${urlMatch.1}.${BaseUrl}")
 ^https?://.*uhd.*/(?:System/Ext/ServerDomains|Sessions/Playing) reject-200
 
 [MITM]
-hostname = emby.com,uhd.com,*.uhdnow.com
+hostname = emby.com,uhd.com,*.uhdnow.com,*.789828.xyz
 
