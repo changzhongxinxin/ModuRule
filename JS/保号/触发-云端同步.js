@@ -1,5 +1,6 @@
 /**
- * Emby 保号 - Stop 触发器 (Gist 云端版)
+ * Emby 保号 - 请求触发器 (Gist 云端版)
+ * 触发方式: 命中服务器的每个请求都更新心跳（不限于停止播放）
  * 配置源: 脚本内写死（不再读取持久化）
  * 存储: Gist 云端 Gist（JSON）
  * Gist 配置: 从 $argument 传入
@@ -32,11 +33,9 @@ const DEFAULT_CONFIG_TEXT =
 麻衣|miraiemby,mirai|23
 飞跃|feiyue.lol,fych|60
 非越|sfcj.org,feiyue|30
-守候|lite.cn2gias.uk,sntp|30
+守候|lite.cn2gias.uk|30
 茶服|teawaya,tea|30
 `;
-
-const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
 // ========== 工具函数 ==========
 const parseConfig = (str) => {
@@ -221,9 +220,6 @@ const writeHeartbeatToCloud = (data, existingGistId, callback, retryCount = 0) =
 
     const url = $request.url || "";
     const host = $request.headers?.Host || url.match(/https?:\/\/([^\/]+)/)?.[1] || "";
-    
-    const isStop = STOP_SIGNS.some(sign => url.includes(sign));
-    if (!isStop) return $done({});
     
     const servers = parseConfig(DEFAULT_CONFIG_TEXT);
     const serverNames = Object.keys(servers);

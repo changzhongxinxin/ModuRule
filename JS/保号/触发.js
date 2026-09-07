@@ -1,13 +1,12 @@
 /**
- * Emby 保号 - Stop 触发器
+ * Emby 保号 - 请求触发器
+ * 触发方式: 命中服务器的每个请求都更新心跳（不限于停止播放）
  * 配置源: 持久化 emby_keepalive_config (纯文本)
  * 心跳存储: 持久化 emby_keepalive_data (JSON, 带缩进)
  */
 
 const CONFIG_KEY = "Emby_Keepalive_Config";
 const HEARTBEAT_KEY = "Emby_keepalive_Data";
-
-const STOP_SIGNS = ["Stopped", "Playing/Stop", "ReportPlaybackStopped", "Playback/Stop"];
 
 // 首次运行默认配置（自动写入持久化，方便后续在Surge里直接编辑）
 const DEFAULT_CONFIG_TEXT = 
@@ -39,11 +38,7 @@ const parseConfig = (str) => {
     const url = $request.url || "";
     const host = $request.headers?.Host || url.match(/https?:\/\/([^\/]+)/)?.[1] || "";
     
-    // 1. 过滤 Stop 请求
-    const isStop = STOP_SIGNS.some(sign => url.includes(sign));
-    if (!isStop) return $done({});
-    
-    // 2. 读取配置（纯文本）
+    // 1. 读取配置（纯文本）
     let configText = $persistentStore.read(CONFIG_KEY);
     if (!configText) {
         $persistentStore.write(DEFAULT_CONFIG_TEXT, CONFIG_KEY);
@@ -58,7 +53,7 @@ const parseConfig = (str) => {
         return $done({});
     }
     
-    // 3. 快速退出：URL 是否命中任何已配置线路？
+    // 2. 快速退出：URL 是否命中任何已配置线路？
     let mightMatch = false;
     for (const s of Object.values(servers)) {
         if (s.patterns.some(p => url.includes(p) || host.includes(p))) {
@@ -71,21 +66,21 @@ const parseConfig = (str) => {
         return $done({});
     }
     
-    // 4. 【关键】读取原始心跳数据，避免覆盖其他服
+    // 3. 【关键】读取原始心跳数据，避免覆盖其他服
     let data = {};
     const stored = $persistentStore.read(HEARTBEAT_KEY);
     if (stored) {
         try { data = JSON.parse(stored); } catch(e) {}
     }
     
-    // 5. 生成日期时间 YYYY-MM-DD HH:mm:ss
+    // 4. 生成日期时间 YYYY-MM-DD HH:mm:ss
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     
     let matched = false;
     
-    // 6. 匹配并更新（只改目标服，其他服不动）
+    // 5. 匹配并更新（只改目标服，其他服不动）
     for (const [name, cfg] of Object.entries(servers)) {
         const hit = cfg.patterns.some(p => url.includes(p) || host.includes(p));
         if (hit) {
@@ -106,7 +101,7 @@ const parseConfig = (str) => {
         }
     }
     
-    // 7. 写回心跳 JSON（带缩进）
+    // 6. 写回心跳 JSON（带缩进）
     if (matched) {
         const ok = $persistentStore.write(JSON.stringify(data, null, 2), HEARTBEAT_KEY);
         if (!ok) console.log("[Emby保号] ⚠️ 心跳写入失败");
