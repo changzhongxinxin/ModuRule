@@ -104,7 +104,16 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             callback(null, null, false);
             return;
         }
-        
+
+        // 服务端异常时返回错误对象而非数组（如 Token 无效的 401 响应）
+        if (!Array.isArray(gists)) {
+            const errMsg = gists && gists.message ? gists.message : "响应格式异常(非数组)";
+            console.log(`[Emby保号] ❌ 服务端返回错误: ${errMsg}，本次放弃同步（请检查 Token）`);
+            $notification.post("Emby 保号", "❌ Gist 服务端错误", `${errMsg}\n请检查 Token 是否有效`);
+            callback(null, null, false);
+            return;
+        }
+
         const targetGist = gists.find(g => g.description === GIST.gistDescription);
         if (!targetGist) {
             console.log("[Emby保号] ℹ️ 云端无历史数据，将创建新 Gist");

@@ -63,7 +63,14 @@ const readHeartbeatFromCloud = (callback, retryCount = 0) => {
             callback(null, "解析 Gist 列表失败");
             return;
         }
-        
+
+        // 服务端异常时返回错误对象而非数组（如 Token 无效的 401 响应）
+        if (!Array.isArray(gists)) {
+            const errMsg = gists && gists.message ? `服务端返回错误: ${gists.message}` : "Gist 列表响应格式异常(非数组)";
+            callback(null, errMsg);
+            return;
+        }
+
         const targetGist = gists.find(g => g.description === GIST.gistDescription);
         if (!targetGist) {
             callback(null, "云端暂无数据，请先触发 Stop 请求");
