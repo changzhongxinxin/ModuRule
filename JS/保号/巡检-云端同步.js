@@ -10,6 +10,7 @@ let arg = {};
 try {
     if (typeof $argument !== 'undefined' && $argument) {
         const str = String($argument).trim();
+		console.log("str"+str);
         if (str[0] === '{' || str[0] === '[') {
             // JSON 形式直接解析
             arg = JSON.parse(str);
@@ -19,6 +20,8 @@ try {
         }
     }
 } catch (e) {}
+console.log("arg"+arg);
+console.log("$argument"+$argument);
 
 const GIST = {
     baseUrl: arg.gistUrl || "https://api.github.com",
