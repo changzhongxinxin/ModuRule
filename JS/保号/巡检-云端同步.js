@@ -5,23 +5,25 @@
  */
 
 // ========== 从 $argument 解析配置 ==========
-// Loon argument=[{a},{b}] 传 JSON 字符串或对象；Surge 传 "k=v&k2=v2" 查询串
+// Loon argument=[{a},{b}] 直接传对象；Surge 传 "k=v&k2=v2" 查询串（个别情况是 JSON 字符串）
 let arg = {};
 try {
     if (typeof $argument !== 'undefined' && $argument) {
-        const str = String($argument).trim();
-		console.log("str"+str);
-        if (str[0] === '{' || str[0] === '[') {
-            // JSON 形式直接解析
-            arg = JSON.parse(str);
-        } else if (str.includes('=')) {
-            // 查询串形式按 k=v&k2=v2 解析
-            arg = Object.fromEntries(new URLSearchParams(str));
+        if (typeof $argument === 'object') {
+            // Loon 直接传对象，原样使用
+            arg = $argument;
+        } else {
+            const str = String($argument).trim();
+            if (str[0] === '{' || str[0] === '[') {
+                // JSON 字符串形式
+                arg = JSON.parse(str);
+            } else if (str.includes('=')) {
+                // Surge 查询串形式
+                arg = Object.fromEntries(new URLSearchParams(str));
+            }
         }
     }
 } catch (e) {}
-console.log("arg"+arg);
-console.log("$argument"+$argument);
 
 const GIST = {
     baseUrl: arg.gistUrl || "https://api.github.com",
