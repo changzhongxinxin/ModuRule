@@ -9,36 +9,20 @@
  * 新增：自动清理云端存在但本地模板已删除的失效服数据。
  */
 
-// ========== 从 $argument 解析 Gist 配置（兼容对象与字符串两种形式）==========
-// Loon 插件 argument=[{a},{b}] 传入 Object；Surge / 字符串 argument 传入 "k=v&k2=v2"
-const parseArgument = (raw) => {
-    if (!raw) return {};
-    if (typeof raw === 'object') {
-        const obj = {};
-        Object.keys(raw).forEach(k => {
-            // Loon 缺值参数字段为 null，跳过以走默认值
-            if (raw[k] !== null && raw[k] !== undefined) obj[k] = raw[k];
-        });
-        return obj;
-    }
-    const obj = {};
-    String(raw).split('&').forEach(pair => {
-        const idx = pair.indexOf('=');
-        if (idx <= 0) return;
-        const key = pair.slice(0, idx);
-        const val = pair.slice(idx + 1);
-        try {
-            obj[key] = decodeURIComponent(val);
-        } catch (e) {
-            obj[key] = val; // 值含未编码的 % 等字符时按原文保留
-        }
-    });
-    return obj;
-};
-
+// ========== 从 $argument 解析 Gist 配置 ==========
+// Loon argument=[{a},{b}] 传 JSON 字符串或对象；Surge 传 "k=v&k2=v2" 查询串
 let arg = {};
 try {
-    arg = parseArgument(typeof $argument !== 'undefined' ? $argument : null);
+    if (typeof $argument !== 'undefined' && $argument) {
+        const str = typeof $argument === 'object' ? JSON.stringify($argument) : String($argument).trim();
+        if (str[0] === '{' || str[0] === '[') {
+            // JSON 形式直接解析
+            arg = JSON.parse(str);
+        } else if (str.includes('=')) {
+            // 查询串形式按 k=v&k2=v2 解析
+            arg = Object.fromEntries(new URLSearchParams(str));
+        }
+    }
 } catch (e) {
     console.log("[Emby保号] ⚠️ $argument 解析失败");
 }
